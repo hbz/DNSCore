@@ -180,13 +180,9 @@ installJava
 
 sed -i -e "s/^Example/#Example/" /etc/clamd.d/scan.conf
 sed -i -e "s/^#LocalSocket/LocalSocket/" /etc/clamd.d/scan.conf
-#yum install  -y ffmpeg ImageMagick-6.7.8.9 ghostscript sox HandBrake-cli python
-
-#yum --enablerepo=linuxtech --enablerepo=linuxtech-testing -y install handbrake-cli --nogpgcheck
-
 	
 ####script f
-yum install -y tomcat tomcat-webapps
+
 mkdir /usr/share/tomcat/.grails/
 cp $SCPATH/data/daweb3_properties.groovy /usr/share/tomcat/.grails/daweb3_properties.groovy
 chmod 644 /usr/share/tomcat/.grails/daweb3_properties.groovy

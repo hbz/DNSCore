@@ -14,10 +14,8 @@ sudo systemctl start xrdp
 sudo chcon --type=bin_t /usr/sbin/xrdp
 sudo chcon --type=bin_t /usr/sbin/xrdp-sesman
 
-#sed -i "s/max_bpp=32/max_bpp=24/g" /etc/xrdp/xrdp.ini
-#xserverbpp=24
+sudo yum -y install clamav-server clamav-data clamav-update clamav-filesystem clamav clamav-scanner-systemd clamav-devel clamav-lib clamav-server-systemd
 
-yum -y install clamav-server clamav-data clamav-update clamav-filesystem clamav clamav-scanner-systemd clamav-devel clamav-lib clamav-server-systemd
+sudo yum install -y ffmpeg ImageMagick-6.7.8.9 ghostscript sox HandBrake-cli python git
 
-
-yum install -y ffmpeg ImageMagick-6.7.8.9 ghostscript sox HandBrake-cli python git
+sudo yum install -y tomcat tomcat-webapps
