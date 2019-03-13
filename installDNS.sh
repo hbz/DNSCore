@@ -1,5 +1,10 @@
 #!/bin/bash
 
+function setSCVariable(){
+	export SCPATH=$(pwd)
+	echo "SCPATH $SCPATH"
+}
+
 function download(){
 	cd /data
 	filename=$1
@@ -25,9 +30,9 @@ function downloadBinariesPrerequisites(){
 	download jdk-8u181-linux-x64.rpm $server
 }
 
+setSCVariable
+downloadBinariesPrerequisites
 
-export SCPATH=$(pwd)
-echo "SCPATH $SCPATH"
 if [ -f /etc/redhat-release ] ; then
 	export HOSTOS=$(cat /etc/system-release-cpe | cut -f 3 -d : )
 	export HOSTREL=$( rpm -qf /etc/redhat-release | cut -f 4,5 -d - | cut -f 1-2 -d .)
