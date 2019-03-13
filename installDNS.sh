@@ -59,36 +59,33 @@ function setLocales(){
 	export LANG=en_US.UTF-8
 }
 
+function shutdownFirewall(){ 
+	echo "Fuer die Installation soll die Firewall und IPv6 und SELINUX erst mal abgeschaltet werden."
+	if [ `getenforce`=='Enforcing' ] ; then
+		setenforce 0
+		sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config
+	fi
+
+
+	function iusrcmd {  
+	 su - $IUSER -c "$1" 
+	}
+
+	systemctl stop firewalld
+	systemctl disable firewalld
+	
+	ANSWER=`getenforce`	
+	if [ $ANSWER != 'Permissive' ] ; then
+		echo "Selinux abstellen mislungen: $ANSWER" 
+		exit 1;
+	fi
+}
+
 setSCVariable
 downloadBinariesPrerequisites
 checkSystemPrerequisites
 setLocales
-
-
-
-####
- 
-echo "Fuer die Installation soll die Firewall und IPv6 und SELINUX erst mal abgeschaltet werden."
-if [ `getenforce`=='Enforcing' ] ; then
-	setenforce 0
-	sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config
-fi
-
-
-function iusrcmd {  
- su - $IUSER -c "$1" 
-}
-
-systemctl stop firewalld
-systemctl disable firewalld
-	
-ANSWER=`getenforce`	
-if [ $ANSWER != 'Permissive' ] ; then
-	echo "Selinux abstellen mislungen: $ANSWER" 
-	exit 1;
-fi
-
-###
+shutdownFirewall
 
 ANSWER=`ls -l /etc/yum.repos.d/ | wc -l `
 echo "YUM RepoANSWER: $ANSWER"
