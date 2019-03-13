@@ -128,6 +128,37 @@ function setUpUsers(){
 	####script e
 }
 
+function installJava(){
+	java -version
+	ls -l /usr/bin/java
+	### java pruefen
+	if [ ! -d /usr/java/jdk1.8.0_181-amd64 ] ; then
+	   #rm -f /usr/bin/java
+	   echo "JDK 1.8.0.181 wird installiert."
+	   mkdir /usr/java
+	   #cp $SCPATH/../ship/jdk-6u45-linux-x64.bin /usr/java
+	   #cd /usr/java; chmod a+x *bin; ./jdk-6u45-linux-x64.bin 
+	   #rm -f jdk-6u45-linux-x64.bin
+	   #ln -s /usr/java/jdk1.6.0_45 /usr/java/latest
+	   #ln -s /usr/java/latest /usr/java/default
+	   yum localinstall -y $SCPATH/data/jdk-8u181-linux-x64.rpm
+	fi
+
+	ln -s /usr/java/jdk1.8.0_181-amd64 /usr/java/latest 
+	ln -s /usr/java/latest /usr/java/default
+	if [ $( rpm -qa | grep -i chkconfig | wc -l ) == "0" ] ; then
+		yum -y install chkconfig
+	fi
+	/usr/sbin/alternatives --install /usr/bin/java java /usr/java/jdk1.8.0_181-amd64/bin/java  3
+	/usr/sbin/alternatives --set  java /usr/java/jdk1.8.0_181-amd64/bin/java
+	echo "export JAVA_HOME=/usr/java/jdk1.8.0_181-amd64" >> ~irods/.bashrc
+	echo "export JAVA_HOME=/usr/java/jdk1.8.0_181-amd64" >> ~tomcat/.bashrc
+	echo "export JAVA_HOME=/usr/java/jdk1.8.0_181-amd64" >> /etc/profile.d/dns.sh
+
+	java -version
+	ANSWER=$(java -version 2>&1 | head -n 1 | cut -f 3 -d " " )
+	echo "java ANSWER: $ANSWER"
+}
 setSCVariable
 downloadBinariesPrerequisites
 checkSystemPrerequisites
@@ -142,6 +173,7 @@ installEPEL
 installDNS
 setEnvironmentVariables
 setUpUsers
+installJava
 
 
 
@@ -149,35 +181,6 @@ setUpUsers
 
 
 
-java -version
-ls -l /usr/bin/java
-### java pruefen
-if [ ! -d /usr/java/jdk1.8.0_181-amd64 ] ; then
-   #rm -f /usr/bin/java
-   echo "JDK 1.8.0.181 wird installiert."
-   mkdir /usr/java
-   #cp $SCPATH/../ship/jdk-6u45-linux-x64.bin /usr/java
-   #cd /usr/java; chmod a+x *bin; ./jdk-6u45-linux-x64.bin 
-   #rm -f jdk-6u45-linux-x64.bin
-   #ln -s /usr/java/jdk1.6.0_45 /usr/java/latest
-   #ln -s /usr/java/latest /usr/java/default
-   yum localinstall -y $SCPATH/data/jdk-8u181-linux-x64.rpm
-fi
-
-ln -s /usr/java/jdk1.8.0_181-amd64 /usr/java/latest 
-ln -s /usr/java/latest /usr/java/default
-if [ $( rpm -qa | grep -i chkconfig | wc -l ) == "0" ] ; then
-	yum -y install chkconfig
-fi
-/usr/sbin/alternatives --install /usr/bin/java java /usr/java/jdk1.8.0_181-amd64/bin/java  3
-/usr/sbin/alternatives --set  java /usr/java/jdk1.8.0_181-amd64/bin/java
-echo "export JAVA_HOME=/usr/java/jdk1.8.0_181-amd64" >> ~irods/.bashrc
-echo "export JAVA_HOME=/usr/java/jdk1.8.0_181-amd64" >> ~tomcat/.bashrc
-echo "export JAVA_HOME=/usr/java/jdk1.8.0_181-amd64" >> /etc/profile.d/dns.sh
-
-java -version
-ANSWER=$(java -version 2>&1 | head -n 1 | cut -f 3 -d " " )
-echo "java ANSWER: $ANSWER"
 
 
 
