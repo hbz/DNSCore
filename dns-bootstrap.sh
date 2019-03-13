@@ -6,21 +6,46 @@ function installPackages(){
 	sudo yum -y groupinstall "GNOME Desktop" 
 	sudo yum -y groupinstall "Graphical Administration Tools"
 	sudo yum -y update
-	sudo rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-	sudo yum -y install xrdp tigervnc-server x11vnc
+	sudo yum -y install xrdp 
+        sudo yum -y install tigervnc-server 
+        sudo yum -y install x11vnc
 	sudo systemctl enable xrdp
 	sudo systemctl start xrdp
 	sudo chcon --type=bin_t /usr/sbin/xrdp
 	sudo chcon --type=bin_t /usr/sbin/xrdp-sesman
-	sudo yum -y install clamav-server clamav-data clamav-update clamav-filesystem clamav clamav-scanner-systemd clamav-devel clamav-lib clamav-server-systemd
-	sudo yum install -y ffmpeg ImageMagick-6.7.8.9 ghostscript sox HandBrake-cli python git
-	sudo yum install -y tomcat tomcat-webapps
+	sudo yum -y install clamav-server
+	sudo yum -y install clamav-data
+	sudo yum -y install clamav-update
+	sudo yum -y install clamav-filesystem
+	sudo yum -y install clamav
+	sudo yum -y install clamav-scanner-systemd
+	sudo yum -y install clamav-devel
+	sudo yum -y install clamav-lib
+	sudo yum -y install clamav-server-systemd
+	sudo yum install -y ffmpeg
+	sudo yum -y install ImageMagick-6.7.8.9
+	sudo yum -y install ghostscript
+	sudo yum -y install sox
+	sudo yum -y install HandBrake-cli
+	sudo yum -y install python
+	sudo yum -y install git
+	sudo yum install -y tomcat
+	sudo yum -y install tomcat-webapps
 	sudo yum remove postgresql\* -y
-	sudo yum -y install postgresql93-server postgresql93-contrib postgresql93-devel postgresql93-libs postgresql93-odbc pgadmin3_93.x86_64 --nogpgcheck
+	sudo yum -y install postgresql93-server
+	sudo yum -y install postgresql93-contrib
+	sudo yum -y install postgresql93-devel
+	sudo yum -y install postgresql93-libs
+	sudo yum -y install postgresql93-odbc
+	sudo yum -y install pgadmin3_93.x86_64 --nogpgcheck
 	sudo /usr/pgsql-9.3/bin/postgresql93-setup initdb
 	sudo systemctl stop postgresql-9.3
 	sudo systemctl start postgresql-9.3
-	sudo yum -y install perl-JSON python-jsonschema python-requests python-psutil authd
+	sudo yum -y install perl-JSON
+	sudo yum -y install python-jsonschema
+	sudo yum -y install python-requests
+	sudo yum -y install python-psutil
+	sudo yum -y install authd
 }
 
 function setSCVariable(){
@@ -44,7 +69,7 @@ function download(){
 function downloadBinariesPrerequisites(){
 	server=https://data.danrw.de/download/
 	download dns-7-repo.tgz $server
-	download epel-release-latest-7.noarch.rpm $server
+	download epel-release-latest-7.noarch.rpm https://dl.fedoraproject.org/pub/epel/
 	download FED-DB-20180517.dump.tgz $server
 	download gradle-3.4.1-bin.tgz $server
 	download grails-3.2.11.tgz $server
@@ -377,7 +402,6 @@ function createStorageAreas(){
 	mkdir -p /ci/storage/UserArea/rods
 	mkdir -p /ci/storage/UserArea/TEST/incoming
 	mkdir -p /ci/storage/UserArea/TEST/outgoing
-
 	chown -R irods:developer /ci/DNSCore
 	chown -R irods:developer /ci/storage
 }
