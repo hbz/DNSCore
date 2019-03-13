@@ -1,5 +1,30 @@
 #!/bin/bash
 
+function download(){
+	cd /data
+	filename=$1
+	url=$2
+	if [ -f $filename ]
+	then
+	    echo "$filename is already here! Stop downloading!"
+	else
+	    wget $server$url
+	fi
+	cd -
+}
+
+function downloadBinariesPrerequisites(){
+	server=https://data.danrw.de/download/
+	download dns-7-repo.tgz $server
+	download epel-release-latest-7.noarch.rpm $server
+	download FED-DB-20180517.dump.tgz $server
+	download gradle-3.4.1-bin.tgz $server
+	download grails-3.2.11.tgz $server
+	download irods-database-plugin-postgres-1.11-centos7-x86_64.rpm https://files.renci.org/pub/irods/releases/4.1.11/centos7/
+	download irods-icat-4.1.11-centos7-x86_64.rpm https://files.renci.org/pub/irods/releases/4.1.11/centos7/
+	download jdk-8u181-linux-x64.rpm $server
+}
+
 
 export SCPATH=$(pwd)
 echo "SCPATH $SCPATH"
@@ -399,10 +424,6 @@ systemctl restart elasticsearch
 ### maven grails gradle
 mkdir -p /ci/projects; 
 cd /ci/projects
-wget http://www-us.apache.org/dist/maven/maven-3/3.6.0/binaries/apache-maven-3.6.0-bin.tar.gz
-tar xvfz apache-maven-3.6.0-bin.tar.gz
-rm -f apache-maven-3.6.0-bin.tar.gz
-#ln -s apache-maven-3.6.0 apache-maven
 mkdir -p ~irods/.m2
 cp $SCPATH/data/MavenSettings.xml  ~irods/.m2/settings.xml
 mkdir -p ~/.m2
