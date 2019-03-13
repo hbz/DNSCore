@@ -186,6 +186,20 @@ function configureTomcat(){
 	chmod 644 /usr/share/tomcat/.grails/daweb3_properties.groovy
 	chown tomcat:tomcat -R /usr/share/tomcat/.grails
 }
+
+function configurePostgres(){
+	mv /var/lib/pgsql/9.3/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.confBU
+	cp -f $SCPATH/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.conf
+	sed -i "s/#listen_addresses/listen_addresses = '*'\n#listen_addresses/g" /var/lib/pgsql/9.3/data/postgresql.conf 
+	sed -i 's/max_connections = 100/max_connections = 200/g' /var/lib/pgsql/9.3/data/postgresql.conf   # TODO: wird nichts ersetzt
+	systemctl enable postgresql-9.3
+	systemctl stop postgresql-9.3
+	systemctl start postgresql-9.3
+	mv /etc/odbcinst.ini /etc/odbcinst.orig
+	head -n 11 /etc/odbcinst.orig >> /etc/odbcinst.ini
+	ANSWER=`ps -ef | grep -i pgsql `
+	echo "postgres ANSWER: $ANSWER"
+}
 setSCVariable
 downloadBinariesPrerequisites
 checkSystemPrerequisites
@@ -204,24 +218,8 @@ installJava
 checkStateOfInstalledPackages
 configureClamAV
 configureTomcat
+configurePostgres
 
-
-#rm -f /var/lib/pgsql/9.3/data/pg_hba.conf
-mv /var/lib/pgsql/9.3/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.confBU
-cp -f $SCPATH/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.conf
-sed -i "s/#listen_addresses/listen_addresses = '*'\n#listen_addresses/g" /var/lib/pgsql/9.3/data/postgresql.conf 
-sed -i 's/max_connections = 100/max_connections = 200/g' /var/lib/pgsql/9.3/data/postgresql.conf   # TODO: wird nichts ersetzt
-
-systemctl enable postgresql-9.3
-systemctl stop postgresql-9.3
-systemctl start postgresql-9.3
-mv /etc/odbcinst.ini /etc/odbcinst.orig
-head -n 11 /etc/odbcinst.orig >> /etc/odbcinst.ini
-
-ANSWER=`ps -ef | grep -i pgsql `
-echo "postgres ANSWER: $ANSWER"
-
-#### script i
 
 
 
