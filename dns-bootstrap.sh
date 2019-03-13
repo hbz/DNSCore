@@ -18,3 +18,6 @@ sudo chcon --type=bin_t /usr/sbin/xrdp-sesman
 #xserverbpp=24
 
 yum -y install clamav-server clamav-data clamav-update clamav-filesystem clamav clamav-scanner-systemd clamav-devel clamav-lib clamav-server-systemd
+
+
+yum install -y ffmpeg ImageMagick-6.7.8.9 ghostscript sox HandBrake-cli python git

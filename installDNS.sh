@@ -178,19 +178,10 @@ installJava
 
 
 
-
-
-
-
-
-
-
-
 sed -i -e "s/^Example/#Example/" /etc/clamd.d/scan.conf
 sed -i -e "s/^#LocalSocket/LocalSocket/" /etc/clamd.d/scan.conf
 #yum install  -y ffmpeg ImageMagick-6.7.8.9 ghostscript sox HandBrake-cli python
 
-yum install -y ffmpeg ImageMagick-6.7.8.9 ghostscript sox HandBrake-cli python git
 #yum --enablerepo=linuxtech --enablerepo=linuxtech-testing -y install handbrake-cli --nogpgcheck
 
 	
