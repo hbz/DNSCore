@@ -51,16 +51,20 @@ function checkSystemPrerequisites(){
 	fi
 }
 
+function setLocales(){
+	if [ $( localectl | grep "System Locale" | cut -f 2 -d : | cut -f 2 -d = ) != "en_US.UTF-8" ] ; then
+		localectl set-locale LANG=en_US.UTF-8
+	fi
+
+	export LANG=en_US.UTF-8
+}
+
 setSCVariable
 downloadBinariesPrerequisites
 checkSystemPrerequisites
+setLocales
 
 
-if [ $( localectl | grep "System Locale" | cut -f 2 -d : | cut -f 2 -d = ) != "en_US.UTF-8" ] ; then
-	localectl set-locale LANG=en_US.UTF-8
-fi
-
-export LANG=en_US.UTF-8
 
 ####
  
