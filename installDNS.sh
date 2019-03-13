@@ -174,6 +174,18 @@ function checkStateOfInstalledPackages(){
 	ANSWER=$((`rpm -qa | grep -i tomcat | wc -l ` ))
 	echo "tomcat ANSWER: $ANSWER"
 }
+
+function configureClamAV(){
+	sed -i -e "s/^Example/#Example/" /etc/clamd.d/scan.conf
+	sed -i -e "s/^#LocalSocket/LocalSocket/" /etc/clamd.d/scan.conf	
+}
+
+function configureTomcat(){
+	mkdir /usr/share/tomcat/.grails/
+	cp $SCPATH/data/daweb3_properties.groovy /usr/share/tomcat/.grails/daweb3_properties.groovy
+	chmod 644 /usr/share/tomcat/.grails/daweb3_properties.groovy
+	chown tomcat:tomcat -R /usr/share/tomcat/.grails
+}
 setSCVariable
 downloadBinariesPrerequisites
 checkSystemPrerequisites
@@ -189,29 +201,10 @@ installDNS
 setEnvironmentVariables
 setUpUsers
 installJava
-
 checkStateOfInstalledPackages
+configureClamAV
+configureTomcat
 
-
-
-sed -i -e "s/^Example/#Example/" /etc/clamd.d/scan.conf
-sed -i -e "s/^#LocalSocket/LocalSocket/" /etc/clamd.d/scan.conf
-	
-####script f
-
-mkdir /usr/share/tomcat/.grails/
-cp $SCPATH/data/daweb3_properties.groovy /usr/share/tomcat/.grails/daweb3_properties.groovy
-chmod 644 /usr/share/tomcat/.grails/daweb3_properties.groovy
-chown tomcat:tomcat -R /usr/share/tomcat/.grails
-
-
-	
-
-
-
-
-
-#### script h  postgress
 
 #rm -f /var/lib/pgsql/9.3/data/pg_hba.conf
 mv /var/lib/pgsql/9.3/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.confBU
