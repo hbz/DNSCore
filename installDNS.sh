@@ -273,9 +273,6 @@ configurePostgres
 createPostgresDBs     
 installFedora
 
-yum -y install perl-JSON python-jsonschema python-requests python-psutil authd
-
-
 echo "Beginne iRODS Install"
 ## install irods
 IUSER=irods
