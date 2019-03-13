@@ -38,7 +38,6 @@ function checkSystemPrerequisites(){
 	else 
 		echo "Skript ist nur fuer RedHat-OS angepasst" 
 		exit 1;
-		#exit $?
 	fi
 
 	if [ $SYSDVER -ne "7" ] ; then
@@ -81,42 +80,52 @@ function shutdownFirewall(){
 	fi
 }
 
+function installEPEL(){
+	if [ $(grep -i "epel" /etc/yum.repos.d/*repo | wc -l ) == "0" ] ; then
+		yum -y localinstall $SCPATH/data/epel-release-latest-7.noarch.rpm
+		rpm --import $SCPATH/data/RPM-GPG-KEY-EPEL-7
+	fi
+}
+
+function installDNS(){
+	if [ "1" -eq "1" ]; then  # yum kennt sonst kein HandBrake und ffmpeg
+		cp $SCPATH/data/dns-7-repo.tgz /etc/yum.repos.d
+		cd /etc/yum.repos.d; 
+		tar -xzvf dns-7-repo.tgz
+		rpm --import $SCPATH/data/RPM-GPG-KEY-nux
+		rm -f dns-7-repo.tgz
+		yum update
+	fi 
+}
+
+function setEnvironmentVariables(){
+	if [ ! -f /etc/profile.d/dns.sh ] ; then 
+		cp $SCPATH/data/profileDns.sh  /etc/profile.d/dns.sh
+	else
+		echo  'export FEDORA_HOME=/ci/fedora' >> /etc/profile.d/dns.sh
+		echo  'export CATALINA_HOME=/usr/share/tomcat' >> /etc/profile.d/dns.sh
+		echo  'export BUILD_NUMBER=123' >> /etc/profile.d/dns.sh
+		echo  'export MAVEN_OPTS="-Xmx512m -XX:MaxPermSize=256m"' >> /etc/profile.d/dns.sh
+		echo  'umask 002 ' >> /etc/profile.d/dns.sh
+		echo  ' ' >> /etc/profile.d/dns.sh
+	fi
+}
 setSCVariable
 downloadBinariesPrerequisites
 checkSystemPrerequisites
 setLocales
 shutdownFirewall
 
+
 ANSWER=`ls -l /etc/yum.repos.d/ | wc -l `
 echo "YUM RepoANSWER: $ANSWER"
 
-if [ $(grep -i "epel" /etc/yum.repos.d/*repo | wc -l ) == "0" ] ; then
-	yum -y localinstall $SCPATH/data/epel-release-latest-7.noarch.rpm
-	rpm --import $SCPATH/data/RPM-GPG-KEY-EPEL-7
-fi
-
-if [ "1" -eq "1" ]; then  # yum kennt sonst kein HandBrake und ffmpeg
-	cp $SCPATH/data/dns-7-repo.tgz /etc/yum.repos.d
-	cd /etc/yum.repos.d; 
-	tar -xzvf dns-7-repo.tgz
-	rpm --import $SCPATH/data/RPM-GPG-KEY-nux
-	rm -f dns-7-repo.tgz
-	yum update
-fi 
+installEPEL
+installDNS
+setEnvironmentVariables
 
 
-#rm -f /etc/profile.d/dns.sh
 
-if [ ! -f /etc/profile.d/dns.sh ] ; then 
-	cp $SCPATH/data/profileDns.sh  /etc/profile.d/dns.sh
-else
-	echo  'export FEDORA_HOME=/ci/fedora' >> /etc/profile.d/dns.sh
-	echo  'export CATALINA_HOME=/usr/share/tomcat' >> /etc/profile.d/dns.sh
-	echo  'export BUILD_NUMBER=123' >> /etc/profile.d/dns.sh
-	echo  'export MAVEN_OPTS="-Xmx512m -XX:MaxPermSize=256m"' >> /etc/profile.d/dns.sh
-	echo  'umask 002 ' >> /etc/profile.d/dns.sh
-	echo  ' ' >> /etc/profile.d/dns.sh
-fi
 
 ### User anlegen
 
