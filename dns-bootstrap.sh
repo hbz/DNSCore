@@ -16,3 +16,5 @@ sudo chcon --type=bin_t /usr/sbin/xrdp-sesman
 
 #sed -i "s/max_bpp=32/max_bpp=24/g" /etc/xrdp/xrdp.ini
 #xserverbpp=24
+
+yum -y install clamav-server clamav-data clamav-update clamav-filesystem clamav clamav-scanner-systemd clamav-devel clamav-lib clamav-server-systemd
