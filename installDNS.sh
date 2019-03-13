@@ -159,6 +159,21 @@ function installJava(){
 	ANSWER=$(java -version 2>&1 | head -n 1 | cut -f 3 -d " " )
 	echo "java ANSWER: $ANSWER"
 }
+
+function checkStateOfInstalledPackages(){
+	ANSWER=$((`rpm -qa | grep -i ImageMagick `))
+	echo "ImageMagick ANSWER: $ANSWER"
+	ANSWER=$((`rpm -qa | grep -i ffmpeg  `))
+	echo "ffmpeg ANSWER: $ANSWER"
+	ANSWER=$((`rpm -qa | grep -i ghostscript`))
+	echo "ghostscript ANSWER: $ANSWER"
+	ANSWER=$((`rpm -qa | grep -i sox `))
+	echo "sox ANSWER: $ANSWER"
+	ANSWER=$((`rpm -qa | grep -i handbrake `))
+	echo "handbrake ANSWER: $ANSWER"
+	ANSWER=$((`rpm -qa | grep -i tomcat | wc -l ` ))
+	echo "tomcat ANSWER: $ANSWER"
+}
 setSCVariable
 downloadBinariesPrerequisites
 checkSystemPrerequisites
@@ -175,6 +190,7 @@ setEnvironmentVariables
 setUpUsers
 installJava
 
+checkStateOfInstalledPackages
 
 
 
@@ -190,28 +206,13 @@ chown tomcat:tomcat -R /usr/share/tomcat/.grails
 
 
 	
-ANSWER=$((`rpm -qa | grep -i ImageMagick `))
-echo "ImageMagick ANSWER: $ANSWER"
-ANSWER=$((`rpm -qa | grep -i ffmpeg  `))
-echo "ffmpeg ANSWER: $ANSWER"
-ANSWER=$((`rpm -qa | grep -i ghostscript`))
-echo "ghostscript ANSWER: $ANSWER"
-ANSWER=$((`rpm -qa | grep -i sox `))
-echo "sox ANSWER: $ANSWER"
-ANSWER=$((`rpm -qa | grep -i handbrake `))
-echo "handbrake ANSWER: $ANSWER"
-ANSWER=$((`rpm -qa | grep -i tomcat | wc -l ` ))
-echo "tomcat ANSWER: $ANSWER"
+
 
 
 
 
 #### script h  postgress
-yum remove postgresql\* -y
-yum -y install postgresql93-server postgresql93-contrib postgresql93-devel postgresql93-libs postgresql93-odbc pgadmin3_93.x86_64 --nogpgcheck
-/usr/pgsql-9.3/bin/postgresql93-setup initdb
-systemctl stop postgresql-9.3
-systemctl start postgresql-9.3
+
 #rm -f /var/lib/pgsql/9.3/data/pg_hba.conf
 mv /var/lib/pgsql/9.3/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.confBU
 cp -f $SCPATH/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.conf

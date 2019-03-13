@@ -19,3 +19,9 @@ sudo yum -y install clamav-server clamav-data clamav-update clamav-filesystem cl
 sudo yum install -y ffmpeg ImageMagick-6.7.8.9 ghostscript sox HandBrake-cli python git
 
 sudo yum install -y tomcat tomcat-webapps
+
+sudo yum remove postgresql\* -y
+sudo yum -y install postgresql93-server postgresql93-contrib postgresql93-devel postgresql93-libs postgresql93-odbc pgadmin3_93.x86_64 --nogpgcheck
+sudo /usr/pgsql-9.3/bin/postgresql93-setup initdb
+sudo systemctl stop postgresql-9.3
+sudo systemctl start postgresql-9.3
