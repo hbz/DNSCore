@@ -72,9 +72,6 @@ function downloadBinaries(){
 	download grails-3.2.11.tgz $server
 	download irods-database-plugin-postgres-1.11-centos7-x86_64.rpm https://files.renci.org/pub/irods/releases/4.1.11/centos7/
 	download irods-icat-4.1.11-centos7-x86_64.rpm https://files.renci.org/pub/irods/releases/4.1.11/centos7/
-	download jdk-8u181-linux-x64.rpm $server
-	download fedora-files.tgz $server
-     	download fedoraNoWar.tgz $server
 	download RPM-GPG-KEY-EPEL-7 $server
 	download RPM-GPG-KEY-nux $server
 }
@@ -141,19 +138,6 @@ function installDNS(){
 
 }
 
-function setEnvironmentVariables(){
-	if [ ! -f /etc/profile.d/dns.sh ] ; then 
-		cp /vagrant/profileDns.sh  /etc/profile.d/dns.sh
-	else
-		echo  'export FEDORA_HOME=/ci/fedora' >> /etc/profile.d/dns.sh
-		echo  'export CATALINA_HOME=/usr/share/tomcat' >> /etc/profile.d/dns.sh
-		echo  'export BUILD_NUMBER=123' >> /etc/profile.d/dns.sh
-		echo  'export MAVEN_OPTS="-Xmx512m -XX:MaxPermSize=256m"' >> /etc/profile.d/dns.sh
-		echo  'umask 002 ' >> /etc/profile.d/dns.sh
-		echo  ' ' >> /etc/profile.d/dns.sh
-	fi
-}
-
 function setUpUsers(){
 	groupadd -g 401 irods
 	groupadd -g 402 postgres   
@@ -167,30 +151,6 @@ function setUpUsers(){
 	usermod -a -G developer irods
 	groupadd -g 396 elasticsearch
 	useradd -c "elasticsearch" -d /usr/share/elasticsearch -s /sbin/nologin -g 396 -u 397 elasticsearch
-}
-
-function installJava(){
-	java -version
-	ls -l /usr/bin/java
-	if [ ! -d /usr/java/jdk1.8.0_181-amd64 ] ; then
-	   echo "JDK 1.8.0.181 wird installiert."
-	   mkdir /usr/java
-	   yum localinstall -y $BIN/jdk-8u181-linux-x64.rpm
-	fi
-
-	ln -s /usr/java/jdk1.8.0_181-amd64 /usr/java/latest 
-	ln -s /usr/java/latest /usr/java/default
-	if [ $( rpm -qa | grep -i chkconfig | wc -l ) == "0" ] ; then
-		yum -y install chkconfig
-	fi
-	/usr/sbin/alternatives --install /usr/bin/java java /usr/java/jdk1.8.0_181-amd64/bin/java  3
-	/usr/sbin/alternatives --set  java /usr/java/jdk1.8.0_181-amd64/bin/java
-	echo "export JAVA_HOME=/usr/java/jdk1.8.0_181-amd64" >> ~irods/.bashrc
-	echo "export JAVA_HOME=/usr/java/jdk1.8.0_181-amd64" >> ~tomcat/.bashrc
-	echo "export JAVA_HOME=/usr/java/jdk1.8.0_181-amd64" >> /etc/profile.d/dns.sh
-	java -version
-	ANSWER=$(java -version 2>&1 | head -n 1 | cut -f 3 -d " " )
-	echo "java ANSWER: $ANSWER"
 }
 
 function checkStateOfInstalledPackages(){
@@ -252,35 +212,6 @@ function createPostgresDBs(){
 	su - postgres -c "/usr/bin/psql -f ~postgres/alter-irods-user.sql"
 	su - postgres -c "/usr/bin/psql -f ~postgres/client-encoding-utf8.sql"
 	su - postgres -c "/usr/bin/psql -f ~postgres/createDB.sql"
-}
-
-function installFedora(){
-	echo "fedora install"
-	cd $BIN/ 
-	tar -xzf $BIN/FED-DB-20180517.dump.tgz
-	psql -d FED -U fed_usr < ./FED-DB-20180517.dump
-	rm -f $BIN/FED-DB-20180517.dump
-	sleep 1
-	echo "fedora unpack tar"
-	tar -xzf $BIN/fedora-files.tgz
-	if [ -d /ci/fedora ] ; then
-		rm -rf /ci/fedora
-	fi
-	mv fedora /ci/
-	chown -R irods:developer /ci/fedora
-	rm -rf fedora
-	systemctl stop tomcat
-	sed -i "s/unpackWARs=\"true\" autoDeploy=\"true\"/unpackWARs=\"true\" autoDeploy=\"false\"/g" /usr/share/tomcat/conf/server.xml 
-	cp /vagrant/fedoraTomcatConf.xml /usr/share/tomcat/conf/Catalina/localhost/fedora.xml	
-	cd /usr/share/tomcat/webapps/
-	if [ -d /usr/share/tomcat/webapps/fedora ] ; then 
-		rm -rf /usr/share/tomcat/webapps/fedora;
-	fi
-	tar -xzf $BIN/fedoraNoWar.tgz
-	rm -f fedora.war
-	systemctl enable tomcat
-	systemctl start tomcat
-	sleep 1
 }
 
 function prepareIRODSDirectoryLayout(){
@@ -350,14 +281,6 @@ function createIRODSResources(){
 	su - irods -c  "printf 'y\n' | /usr/bin/iadmin modresc ciWorkingResource path $WORKDIR"
 }
 
-function installElasticsearch(){
-	yum -y localinstall $BIN/elasticsearch-0.90.3.noarch.rpm
-	sed -i "s/# cluster.name/cluster.name: cluster_ci\n# cluster.name/g" /etc/elasticsearch/elasticsearch.yml
-	systemctl restart elasticsearch
-	/vagrant/initES.sh "portal_ci_test" 
-	/vagrant/initES.sh "portal_ci"
-}
-
 function installGradleGrails(){
 	mkdir -p /ci/projects; 
 	cd /ci/projects
@@ -366,8 +289,8 @@ function installGradleGrails(){
 	mkdir -p ~/.m2
 	cp /vagrant/MavenSettings.xml  ~/.m2/settings.xml
 	chown -R irods:irods ~irods/.m2
-	echo  'export M2_HOME=/ci/projects/apache-maven-3.6.0' >> /etc/profile.d/dns.sh
-	echo  'export PATH=${M2_HOME}/bin:${PATH}' >> /etc/profile.d/dns.sh
+	#echo  'export M2_HOME=/ci/projects/apache-maven-3.6.0' >> /etc/profile.d/dns.sh
+	#echo  'export PATH=${M2_HOME}/bin:${PATH}' >> /etc/profile.d/dns.sh
 	cp $BIN/grails-3.2.11.tgz /ci/projects/grails-3.2.11.tgz
 	cd /ci/projects/; 
 	tar -xzf grails-3.2.11.tgz
@@ -415,7 +338,6 @@ setLocales
 shutdownFirewall
 #Create users and install directory
 setUpUsers
-setEnvironmentVariables
 createStorageAreas
 prepareIRODSDirectoryLayout
 #Download third party software
@@ -424,16 +346,13 @@ downloadBinaries
 installPackages
 installEPEL
 installDNS
-#installJava
 configureClamAV
 configureTomcat
 configurePostgres
 createPostgresDBs     
-#installFedora
 installIRODS
 configureIRODS
 createIRODSResources
-#installElasticsearch
 installGradleGrails
 installContentBroker
 linkPythonToCI
