@@ -366,7 +366,6 @@ function installGradleGrails(){
 	mkdir -p ~/.m2
 	cp /vagrant/MavenSettings.xml  ~/.m2/settings.xml
 	chown -R irods:irods ~irods/.m2
-	ln -s /ci/projects/apache-maven-3.6.0/bin/mvn /usr/bin/mvn
 	echo  'export M2_HOME=/ci/projects/apache-maven-3.6.0' >> /etc/profile.d/dns.sh
 	echo  'export PATH=${M2_HOME}/bin:${PATH}' >> /etc/profile.d/dns.sh
 	cp $BIN/grails-3.2.11.tgz /ci/projects/grails-3.2.11.tgz
@@ -409,22 +408,6 @@ function linkPythonToCI(){
 	mkdir -p /ci/python/
 	ln -s /usr/bin/python2.7 /ci/python/python
 }
-
-OWNHOST=$(hostname -s)
-ZONENAME="ci"
-HOSTNR=1
-RODSPASS="sdor78-bvc"
-ICATPASS="irods123"
-FEDPASS="clBDmno7"
-CACHEDIR="/ci/archiveStorage"
-WORKDIR="/ci/storage/WorkArea"
-CACHERESC="ciWorkingResource"
-DBPASS="KKLmno13g"
-ARCHRESC="ciArchiveResource"
-LZAPATH="/ci/archiveStorage"
-LZARESCG="ciArchiveRescGroup"
-ZONES="12345"	
-ZONEKEY="dns"$ZONES"dns"$ZONES"dns"$ZONES"dns"$ZONES
 
 #Preparations
 checkSystemPrerequisites
