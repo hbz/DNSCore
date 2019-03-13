@@ -65,11 +65,6 @@ function shutdownFirewall(){
 		sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config
 	fi
 
-
-	function iusrcmd {  
-	 su - $IUSER -c "$1" 
-	}
-
 	systemctl stop firewalld
 	systemctl disable firewalld
 	
@@ -200,9 +195,10 @@ function configurePostgres(){
 	ANSWER=`ps -ef | grep -i pgsql `
 	echo "postgres ANSWER: $ANSWER"
 }
-
+function iusrcmd {  
+	 su - $IUSER -c "$1" 
+}
 function createPostgresDBs(){
-	IUSER=postgres
 	iusrcmd "/usr/pgsql-9.3/bin/createuser -s -d -r -l irods"
 	iusrcmd "/usr/pgsql-9.3/bin/createuser -s -d -r -l fed_usr"
 	iusrcmd "/usr/pgsql-9.3/bin/createuser -s -d -r -l cb_usr"
@@ -254,6 +250,170 @@ function installFedora(){
 	sleep 1
 }
 
+function prepareIRODSDirectoryLayout(){
+	mkdir -p $CACHEDIR/work
+	chown -R irods:irods $CACHEDIR
+	if [ -d ~irods/.irods ] ; then
+		rm -rf  ~irods/.irods 
+	fi
+	mkdir ~irods/.irods;
+	chmod 770 ~irods/.irods
+	systemctl stop irods
+	yum remove irods\* -y
+	rm -rf  /var/lib/irods/
+	rm -rf ~irods/.irods
+	rm -rf /etc/irods
+}
+
+function installIRODS(){
+	yum -y localinstall $SCPATH/data/irods-icat-4.1.11-centos7-x86_64.rpm
+	yum -y localinstall $SCPATH/data/irods-database-plugin-postgres-1.11-centos7-x86_64.rpm
+	if [ -f /usr/lib64/psqlodbc.so ] ; then	rm -f /usr/lib64/psqlodbc.so  
+	fi
+	if [ -f /usr/pgsql-9.3/lib/psqlodbc.so ] ; then
+		rm -f /usr/pgsql-9.3/lib/psqlodbc.so
+	fi
+	chown -R irods:irods /var/lib/irods	
+	systemctl stop postgresql-9.3
+	systemctl start postgresql-9.3
+	systemctl stop irods 
+}
+function configureIRODS(){
+	#irsed -i "s/testpassword/$RODSPASS/g"  /etc/irods/database_config.json
+	sed -i "s/SHA256/MD5/g" /etc/irods/server_config.json
+
+	if [ -f /etc/init.d/irods ]; then
+	    chkconfig irods off
+	    service irods stop
+	    rm -f /etc/init.d/irods
+	fi
+	cp $SCPATH/data/irodsC7 /etc/systemd/system/irods.service
+	systemctl enable irods
+	systemctl start irods
+		
+		
+		
+	ZONES="12345"	
+	echo "Zone $ZONES"
+	ZONEKEY="dns"$ZONES"dns"$ZONES"dns"$ZONES"dns"$ZONES
+	echo "Zonenkey $ZONEKEY"
+	echo "Default-Dir $CACHEDIR"
+
+	printf "irods\nirods\n$ZONENAME\n1247\n\n\n$CACHEDIR\ndns$ZONES\n$ZONEKEY\n1248\ndnszone-dnszone-dnszone-dnszone-\noff\nrods\n$RODSPASS\nyes\nlocalhost\n\n\n\n$ICATPASS\nyes\n" | /var/lib/irods/packaging/setup_irods.sh
+	
+	sleep 3
+
+	systemctl start irods 
+	sleep 1
+	#service irods stop
+	#systemctl stop irods
+	#sleep 1
+	#sed -i 's!"icat_host": null!"icat_host": "$(hostname)"!g' /etc/irods/server_config.json
+	#sed -i 's!"icat_host": null!"icat_host": "$(hostname)"!g' /etc/irods/server_config.json
+
+	#sed -i 's!\"icat_host\": \"localhost\"!\"icat_host\": \""$(hostname)"\"!g' /etc/irods/server_config.json
+	#service irods start
+	#systemctl start irods
+	sed -i 's!\"default_dir_mode\": \"0750\"!\"default_dir_mode\": \"0775\"!g' /etc/irods/server_config.json
+	sed -i 's!\"default_file_mode\": \"0600\"!\"default_file_mode\": \"0664\"!g' /etc/irods/server_config.json
+
+	iusrcmd "printf 'y\n' | /usr/bin/iadmin modresc demoResc name $CACHERESC"
+	#service irods stop
+	systemctl stop irods
+	sleep 1
+
+
+	sed -i 's/SHA256/MD5/g' ~irods/.irods/irods_environment.json
+	sed -i "s/demoResc/$CACHERESC/g" /etc/irods/server_config.json
+	sed -i "s/demoResc/$CACHERESC/g" ~irods/.irods/irods_environment.json
+	sed -i "s/demoResc/$CACHERESC/g" /etc/irods/core.re
+
+	#begin
+	service irods start	
+}
+
+function createIRODSResources(){
+	iusrcmd "printf 'y\n' | /usr/bin/iadmin mkresc $ARCHRESC unixfilesystem $OWNHOST:$LZAPATH"
+	iusrcmd "printf 'y\n' | /usr/bin/iadmin mkresc $LZARESCG passthru"
+	iusrcmd "printf 'y\n' | /usr/bin/iadmin addchildtoresc $LZARESCG $ARCHRESC" 
+	iusrcmd "printf 'y\n' | /usr/bin/iadmin modresc ciWorkingResource path $WORKDIR"
+}
+
+function installElasticsearch(){
+	groupadd -g 396 elasticsearch
+	useradd -c "elasticsearch" -d /usr/share/elasticsearch -s /sbin/nologin -g 396 -u 397 elasticsearch
+	yum -y localinstall $SCPATH/data/elasticsearch-0.90.3.noarch.rpm
+	sed -i "s/# cluster.name/cluster.name: cluster_ci\n# cluster.name/g" /etc/elasticsearch/elasticsearch.yml
+	systemctl restart elasticsearch
+	$SCPATH/data/initES.sh "portal_ci_test" 
+	$SCPATH/data/initES.sh "portal_ci"
+}
+
+function installGradleGrails(){
+	mkdir -p /ci/projects; 
+	cd /ci/projects
+	mkdir -p ~irods/.m2
+	cp $SCPATH/data/MavenSettings.xml  ~irods/.m2/settings.xml
+	mkdir -p ~/.m2
+	cp $SCPATH/data/MavenSettings.xml  ~/.m2/settings.xml
+	chown -R irods:irods ~irods/.m2
+	ln -s /ci/projects/apache-maven-3.6.0/bin/mvn /usr/bin/mvn
+	echo  'export M2_HOME=/ci/projects/apache-maven-3.6.0' >> /etc/profile.d/dns.sh
+	echo  'export PATH=${M2_HOME}/bin:${PATH}' >> /etc/profile.d/dns.sh
+	cp $SCPATH/data/grails-3.2.11.tgz /ci/projects/grails-3.2.11.tgz
+	cd /ci/projects/; 
+	tar -xzf grails-3.2.11.tgz
+	rm -f grails-3.2.11.tgz
+	cp $SCPATH/data/gradle-3.4.1-bin.tgz /ci/projects/gradle-3.4.1-bin.tgz
+	cd /ci/projects/; 
+	tar -xzf gradle-3.4.1-bin.tgz
+	rm -f gradle-3.4.1-bin.tgz
+	chown -R irods:developer /ci/projects/
+	ln -s /ci/projects/grails-3.2.11/bin/grails /usr/bin/grails
+	ln -s /ci/projects/gradle-3.4.1/bin/gradle /usr/bin/gradle
+}
+
+function installContentBroker(){
+	mkdir /ci/ContentBroker
+	chown irods:developer /ci/ContentBroker
+	cd /ci/
+	git clone https://github.com/da-nrw/DNSCore.git
+}
+
+function createStorageAreas(){
+	mkdir -p /ci/storage/IngestArea
+	mkdir -p /ci/storage/IngestArea/noBagit
+	mkdir -p /ci/storage/IngestArea/noBagit/TEST
+	mkdir -p /ci/storage/IngestArea/TEST
+	mkdir -p /ci/storage/WorkArea
+	mkdir -p /ci/storage/UserArea
+	mkdir -p /ci/storage/GridCacheArea
+	mkdir -p /ci/storage/UserArea/TEST
+	mkdir -p /ci/storage/UserArea/rods
+	mkdir -p /ci/storage/UserArea/TEST/incoming
+	mkdir -p /ci/storage/UserArea/TEST/outgoing
+
+	chown -R irods:developer /ci/DNSCore
+	chown -R irods:developer /ci/storage
+}
+function linkPythonToCI(){
+mkdir -p /ci/python/
+ln -s /usr/bin/python2.7 /ci/python/python
+}
+
+ZONENAME="ci"
+HOSTNR=1
+RODSPASS="sdor78-bvc"
+ICATPASS="irods123"
+FEDPASS="clBDmno7"
+CACHEDIR="/ci/archiveStorage"
+WORKDIR="/ci/storage/WorkArea"
+CACHERESC="ciWorkingResource"
+DBPASS="KKLmno13g"
+ARCHRESC="ciArchiveResource"
+LZAPATH="/ci/archiveStorage"
+LZARESCG="ciArchiveRescGroup"
+
 setSCVariable
 downloadBinariesPrerequisites
 checkSystemPrerequisites
@@ -270,204 +430,25 @@ checkStateOfInstalledPackages
 configureClamAV
 configureTomcat
 configurePostgres
+IUSER=postgres
 createPostgresDBs     
 installFedora
-
+IUSER=irods
 echo "Beginne iRODS Install"
-## install irods
+prepareIRODSDirectoryLayout
+installIRODS
 IUSER=irods
-ZONENAME="ci"
-HOSTNR=1
-RODSPASS="sdor78-bvc"
-ICATPASS="irods123"
-FEDPASS="clBDmno7"
-#CACHEDIR="/ci/storage/GridCacheArea"
-CACHEDIR="/ci/archiveStorage"
-#CACHEDIR="/ci/storage/WorkArea"
-WORKDIR="/ci/storage/WorkArea"
-CACHERESC="ciWorkingResource"
-DBPASS="KKLmno13g"
-mkdir -p $CACHEDIR/work
-chown -R irods:irods $CACHEDIR
-if [ -d ~irods/.irods ] ; then
-	rm -rf  ~irods/.irods 
-fi
-
-mkdir ~irods/.irods;
-chmod 770 ~irods/.irods
-
-
-#
-
-
-
-systemctl stop irods
-yum remove irods\* -y
-
-rm -rf  /var/lib/irods/
-rm -rf ~irods/.irods
-rm -rf /etc/irods
-
-
-
-
-yum -y localinstall $SCPATH/data/irods-icat-4.1.11-centos7-x86_64.rpm
-yum -y localinstall $SCPATH/data/irods-database-plugin-postgres-1.11-centos7-x86_64.rpm
-
-if [ -f /usr/lib64/psqlodbc.so ] ; then
-	rm -f /usr/lib64/psqlodbc.so  
-fi
-if [ -f /usr/pgsql-9.3/lib/psqlodbc.so ] ; then
-	rm -f /usr/pgsql-9.3/lib/psqlodbc.so
-fi
-
-chown -R irods:irods /var/lib/irods
-
-
-	
-systemctl stop postgresql-9.3
-systemctl start postgresql-9.3
-
-
-#### irods
-
-systemctl stop irods 
-
-
-#irsed -i "s/testpassword/$RODSPASS/g"  /etc/irods/database_config.json
-sed -i "s/SHA256/MD5/g" /etc/irods/server_config.json
-
-if [ -f /etc/init.d/irods ]; then
-    chkconfig irods off
-    service irods stop
-    rm -f /etc/init.d/irods
-fi
-cp $SCPATH/data/irodsC7 /etc/systemd/system/irods.service
-systemctl enable irods
-systemctl start irods
-		
-		
-		
-ZONES="12345"	
-echo "Zone $ZONES"
-ZONEKEY="dns"$ZONES"dns"$ZONES"dns"$ZONES"dns"$ZONES
-echo "Zonenkey $ZONEKEY"
-echo "Default-Dir $CACHEDIR"
-
-printf "irods\nirods\n$ZONENAME\n1247\n\n\n$CACHEDIR\ndns$ZONES\n$ZONEKEY\n1248\ndnszone-dnszone-dnszone-dnszone-\noff\nrods\n$RODSPASS\nyes\nlocalhost\n\n\n\n$ICATPASS\nyes\n" | /var/lib/irods/packaging/setup_irods.sh
-IUSER=irods
-sleep 3
-
-systemctl start irods 
-sleep 1
-#service irods stop
-#systemctl stop irods
-#sleep 1
-#sed -i 's!"icat_host": null!"icat_host": "$(hostname)"!g' /etc/irods/server_config.json
-#sed -i 's!"icat_host": null!"icat_host": "$(hostname)"!g' /etc/irods/server_config.json
-
-#sed -i 's!\"icat_host\": \"localhost\"!\"icat_host\": \""$(hostname)"\"!g' /etc/irods/server_config.json
-#service irods start
-#systemctl start irods
-sed -i 's!\"default_dir_mode\": \"0750\"!\"default_dir_mode\": \"0775\"!g' /etc/irods/server_config.json
-sed -i 's!\"default_file_mode\": \"0600\"!\"default_file_mode\": \"0664\"!g' /etc/irods/server_config.json
-
-iusrcmd "printf 'y\n' | /usr/bin/iadmin modresc demoResc name $CACHERESC"
-#service irods stop
-systemctl stop irods
-sleep 1
-
-
-sed -i 's/SHA256/MD5/g' ~irods/.irods/irods_environment.json
-sed -i "s/demoResc/$CACHERESC/g" /etc/irods/server_config.json
-sed -i "s/demoResc/$CACHERESC/g" ~irods/.irods/irods_environment.json
-sed -i "s/demoResc/$CACHERESC/g" /etc/irods/core.re
-
-#begin
 export IUSER=irods
-service irods start	
-
-
+configureIRODS
 OWNHOST=$(hostname -s)
-#OWNZONE="ci"
-ARCHRESC="ciArchiveResource"
-LZAPATH="/ci/archiveStorage"
-LZARESCG="ciArchiveRescGroup"
-#CBUSERPASS="KKLmno13g"
-
-iusrcmd "printf 'y\n' | /usr/bin/iadmin mkresc $ARCHRESC unixfilesystem $OWNHOST:$LZAPATH"
-iusrcmd "printf 'y\n' | /usr/bin/iadmin mkresc $LZARESCG passthru"
-iusrcmd "printf 'y\n' | /usr/bin/iadmin addchildtoresc $LZARESCG $ARCHRESC"
-  
-iusrcmd "printf 'y\n' | /usr/bin/iadmin modresc ciWorkingResource path $WORKDIR"
-
-
-### elastiksearch
-groupadd -g 396 elasticsearch
-useradd -c "elasticsearch" -d /usr/share/elasticsearch -s /sbin/nologin -g 396 -u 397 elasticsearch
-yum -y localinstall $SCPATH/data/elasticsearch-0.90.3.noarch.rpm
-sed -i "s/# cluster.name/cluster.name: cluster_ci\n# cluster.name/g" /etc/elasticsearch/elasticsearch.yml
-systemctl restart elasticsearch
-
-
-### maven grails gradle
-mkdir -p /ci/projects; 
-cd /ci/projects
-mkdir -p ~irods/.m2
-cp $SCPATH/data/MavenSettings.xml  ~irods/.m2/settings.xml
-mkdir -p ~/.m2
-cp $SCPATH/data/MavenSettings.xml  ~/.m2/settings.xml
-chown -R irods:irods ~irods/.m2
-
-ln -s /ci/projects/apache-maven-3.6.0/bin/mvn /usr/bin/mvn
-echo  'export M2_HOME=/ci/projects/apache-maven-3.6.0' >> /etc/profile.d/dns.sh
-echo  'export PATH=${M2_HOME}/bin:${PATH}' >> /etc/profile.d/dns.sh
-	
-cp $SCPATH/data/grails-3.2.11.tgz /ci/projects/grails-3.2.11.tgz
-cd /ci/projects/; 
-tar -xzf grails-3.2.11.tgz
-rm -f grails-3.2.11.tgz
-cp $SCPATH/data/gradle-3.4.1-bin.tgz /ci/projects/gradle-3.4.1-bin.tgz
-cd /ci/projects/; 
-tar -xzf gradle-3.4.1-bin.tgz
-rm -f gradle-3.4.1-bin.tgz
-
-chown -R irods:developer /ci/projects/
-
-ln -s /ci/projects/grails-3.2.11/bin/grails /usr/bin/grails
-ln -s /ci/projects/gradle-3.4.1/bin/gradle /usr/bin/gradle
-
-	
-##project clone
-
-
-mkdir /ci/ContentBroker
-chown irods:developer /ci/ContentBroker
-
-cd /ci/
-git clone https://github.com/da-nrw/DNSCore.git
-mkdir -p /ci/storage/IngestArea
-mkdir -p /ci/storage/IngestArea/noBagit
-mkdir -p /ci/storage/IngestArea/noBagit/TEST
-mkdir -p /ci/storage/IngestArea/TEST
-mkdir -p /ci/storage/WorkArea
-mkdir -p /ci/storage/UserArea
-mkdir -p /ci/storage/GridCacheArea
-mkdir -p /ci/storage/UserArea/TEST
-mkdir -p /ci/storage/UserArea/rods
-mkdir -p /ci/storage/UserArea/TEST/incoming
-mkdir -p /ci/storage/UserArea/TEST/outgoing
-
-chown -R irods:developer /ci/DNSCore
-chown -R irods:developer /ci/storage
-
-mkdir -p /ci/python/
-ln -s /usr/bin/python2.7 /ci/python/python
-
-$SCPATH/data/initES.sh "portal_ci_test" 
-$SCPATH/data/initES.sh "portal_ci"
+createIRODSResources
+installElasticsearch
+installGradleGrails
+installContentBroker
+createStorageAreas
+linkPythonToCI
 chmod -R g+w /ci
 
-cd /ci/DNSCore
+#cd /ci/DNSCore
 #iusrcmd "mvn install -Pci"
 
