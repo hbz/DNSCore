@@ -2,38 +2,25 @@
 
 source /vagrant/variables.conf
 
-function downloadPackages(){
-	cd /vagrant
-
-	if [ -f typesafe-activator-1.3.5.zip ]
+function download(){
+	cd $BIN
+	filename=$1
+	url=$2
+	if [ -f $filename ]
 	then
-	    echo "Activator is already here! Stop downloading!"
+	    echo "$filename is already here! Stop downloading!"
 	else
-	    wget http://downloads.typesafe.com/typesafe-activator/1.3.5/typesafe-activator-1.3.5.zip
+	    wget $server$url
 	fi
-
-	if [ -f fcrepo-installer-3.7.1.jar ]
-	then
-	    echo "fcrepo is already here! Stop downloading!"
-	else
-	    wget http://sourceforge.net/projects/fedora-commons/files/fedora/3.7.1/fcrepo-installer-3.7.1.jar 
-	fi
-
-	if [ -f mysql-community-release-el7-5.noarch.rpm ]
-	then
-	    echo "Mysql is already here! Stop downloading!"
-	else
-	    wget http://repo.mysql.com/mysql-community-release-el7-5.noarch.rpm 
-	fi
-
-	if [ -f elasticsearch-1.1.0.noarch.rpm ]
-	then
-	    echo "Elasticsearch is already here! Stop downloading!"
-	else
-	    wget https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.1.0.noarch.rpm
-	fi
+	cd -
 }
 
+function downloadBinaries(){
+	download typesafe-activator-1.3.5.zip http://downloads.typesafe.com/typesafe-activator/1.3.5/
+	download fcrepo-installer-3.7.1.jar http://sourceforge.net/projects/fedora-commons/files/fedora/3.7.1/
+	download mysql-community-release-el7-5.noarch.rpm http://repo.mysql.com/
+	download elasticsearch-1.1.0.noarch.rpm https://download.elastic.co/elasticsearch/elasticsearch/
+}
 function installPackages(){
     sudo yum -y update
     sudo yum -y install httpd
@@ -46,13 +33,13 @@ function installPackages(){
     sudo yum -y install unzip
     
     
-    yes|sudo rpm -ivh /vagrant/mysql-community-release-el7-5.noarch.rpm
+    yes|sudo rpm -ivh $BIN/mysql-community-release-el7-5.noarch.rpm
     yum update -y
     sudo yum -y install mysql-server
     sudo systemctl start mysqld
 
     
-    sudo rpm -i /vagrant/elasticsearch-1.1.0.noarch.rpm
+    sudo rpm -i $BIN/elasticsearch-1.1.0.noarch.rpm
     cd /usr/share/elasticsearch/
     sudo bin/plugin -install mobz/elasticsearch-head
     sudo bin/plugin install elasticsearch/elasticsearch-analysis-icu/2.1.0
@@ -82,7 +69,7 @@ function downloadRegalSources(){
 function installFedora(){
     /vagrant/configure.sh
     export FEDORA_HOME=$ARCHIVE_HOME/fedora
-    java -jar /vagrant/fcrepo-installer-3.7.1.jar  $ARCHIVE_HOME/conf/install.properties
+    java -jar $BIN/fcrepo-installer-3.7.1.jar  $ARCHIVE_HOME/conf/install.properties
     cp $ARCHIVE_HOME/conf/fedora-users.xml $ARCHIVE_HOME/fedora/server/config/
     cp $ARCHIVE_HOME/conf/setenv.sh $ARCHIVE_HOME/fedora/tomcat/bin
     cp $ARCHIVE_HOME/conf/tomcat-users.xml /opt/regal/fedora/tomcat/conf/
@@ -95,7 +82,7 @@ function installPlay(){
     then
 	echo "Activator already installed!"
     else
-	unzip /vagrant/typesafe-activator-1.3.5.zip -d $ARCHIVE_HOME 
+	unzip $BIN/typesafe-activator-1.3.5.zip -d $ARCHIVE_HOME 
     fi
 }
 
@@ -146,7 +133,7 @@ function configureApache(){
     cp /vagrant/regal.vagrant.conf /etc/httpd/sites-enabled/
 }
 
-downloadPackages
+downloadBinaries
 installPackages
 createRegalFolderLayout
 downloadRegalSources

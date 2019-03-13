@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+source /vagrant/variables.conf
+
 function installPackages(){
 	sudo yum -y update
 	sudo yum -y groupinstall "X Window System"
@@ -49,7 +51,7 @@ function installPackages(){
 }
 
 function download(){
-	cd /vagrant/data
+	cd $BIN
 	filename=$1
 	url=$2
 	if [ -f $filename ]
@@ -71,6 +73,10 @@ function downloadBinaries(){
 	download irods-database-plugin-postgres-1.11-centos7-x86_64.rpm https://files.renci.org/pub/irods/releases/4.1.11/centos7/
 	download irods-icat-4.1.11-centos7-x86_64.rpm https://files.renci.org/pub/irods/releases/4.1.11/centos7/
 	download jdk-8u181-linux-x64.rpm $server
+	download fedora-files.tgz $server
+     	download fedoraNoWar.tgz $server
+	download RPM-GPG-KEY-EPEL-7 $server
+	download RPM-GPG-KEY-nux $server
 }
 
 function checkSystemPrerequisites(){
@@ -120,16 +126,16 @@ function shutdownFirewall(){
 
 function installEPEL(){
 	if [ $(grep -i "epel" /etc/yum.repos.d/*repo | wc -l ) == "0" ] ; then
-		yum -y localinstall /vagrant/data/epel-release-latest-7.noarch.rpm
-		rpm --import /vagrant/data/RPM-GPG-KEY-EPEL-7
+		yum -y localinstall $BIN/epel-release-latest-7.noarch.rpm
+		rpm --import $BIN/RPM-GPG-KEY-EPEL-7
 	fi
 }
 
 function installDNS(){	
-	cp /vagrant/data/dns-7-repo.tgz /etc/yum.repos.d
+	cp $BIN/dns-7-repo.tgz /etc/yum.repos.d
 	cd /etc/yum.repos.d; 
 	tar -xzvf dns-7-repo.tgz
-	rpm --import /vagrant/data/RPM-GPG-KEY-nux
+	rpm --import $BIN/RPM-GPG-KEY-nux
 	rm -f dns-7-repo.tgz
 	yum update
 
@@ -137,7 +143,7 @@ function installDNS(){
 
 function setEnvironmentVariables(){
 	if [ ! -f /etc/profile.d/dns.sh ] ; then 
-		cp /vagrant/data/profileDns.sh  /etc/profile.d/dns.sh
+		cp /vagrant/profileDns.sh  /etc/profile.d/dns.sh
 	else
 		echo  'export FEDORA_HOME=/ci/fedora' >> /etc/profile.d/dns.sh
 		echo  'export CATALINA_HOME=/usr/share/tomcat' >> /etc/profile.d/dns.sh
@@ -169,7 +175,7 @@ function installJava(){
 	if [ ! -d /usr/java/jdk1.8.0_181-amd64 ] ; then
 	   echo "JDK 1.8.0.181 wird installiert."
 	   mkdir /usr/java
-	   yum localinstall -y /vagrant/data/jdk-8u181-linux-x64.rpm
+	   yum localinstall -y $BIN/jdk-8u181-linux-x64.rpm
 	fi
 
 	ln -s /usr/java/jdk1.8.0_181-amd64 /usr/java/latest 
@@ -209,14 +215,14 @@ function configureClamAV(){
 
 function configureTomcat(){
 	mkdir /usr/share/tomcat/.grails/
-	cp /vagrant/data/daweb3_properties.groovy /usr/share/tomcat/.grails/daweb3_properties.groovy
+	cp /vagrant/daweb3_properties.groovy /usr/share/tomcat/.grails/daweb3_properties.groovy
 	chmod 644 /usr/share/tomcat/.grails/daweb3_properties.groovy
 	chown tomcat:tomcat -R /usr/share/tomcat/.grails
 }
 
 function configurePostgres(){
 	mv /var/lib/pgsql/9.3/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.confBU
-	cp -f /vagrant/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.conf
+	cp -f /vagrant/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.conf
 	sed -i "s/#listen_addresses/listen_addresses = '*'\n#listen_addresses/g" /var/lib/pgsql/9.3/data/postgresql.conf 
 	sed -i 's/max_connections = 100/max_connections = 200/g' /var/lib/pgsql/9.3/data/postgresql.conf   # TODO: wird nichts ersetzt
 	systemctl enable postgresql-9.3
@@ -241,8 +247,8 @@ function createPostgresDBs(){
 	echo "alter role irods with password '"$FEDPASS"';" > ~postgres/alter-irods-user.sql
 	echo "alter role irods with password '"$ICATPASS"';" >> ~postgres/alter-irods-user.sql
 	echo "alter role irods with password '"$RODSPASS"';" >> ~postgres/alter-irods-user.sql	
-	cp /vagrant/data/client-encoding-utf8.sql ~postgres
-	cp /vagrant/data/createDB.sql ~postgres
+	cp /vagrant/client-encoding-utf8.sql ~postgres
+	cp /vagrant/createDB.sql ~postgres
 	su - postgres -c "/usr/bin/psql -f ~postgres/alter-irods-user.sql"
 	su - postgres -c "/usr/bin/psql -f ~postgres/client-encoding-utf8.sql"
 	su - postgres -c "/usr/bin/psql -f ~postgres/createDB.sql"
@@ -250,13 +256,13 @@ function createPostgresDBs(){
 
 function installFedora(){
 	echo "fedora install"
-	cd /vagrant/data/ 
-	tar -xzf /vagrant/data/FED-DB-20180517.dump.tgz
+	cd $BIN/ 
+	tar -xzf $BIN/FED-DB-20180517.dump.tgz
 	psql -d FED -U fed_usr < ./FED-DB-20180517.dump
-	rm -f /vagrant/data/FED-DB-20180517.dump
+	rm -f $BIN/FED-DB-20180517.dump
 	sleep 1
 	echo "fedora unpack tar"
-	tar -xzf /vagrant/data/fedora-files.tgz
+	tar -xzf $BIN/fedora-files.tgz
 	if [ -d /ci/fedora ] ; then
 		rm -rf /ci/fedora
 	fi
@@ -265,12 +271,12 @@ function installFedora(){
 	rm -rf fedora
 	systemctl stop tomcat
 	sed -i "s/unpackWARs=\"true\" autoDeploy=\"true\"/unpackWARs=\"true\" autoDeploy=\"false\"/g" /usr/share/tomcat/conf/server.xml 
-	cp /vagrant/data/fedoraTomcatConf.xml /usr/share/tomcat/conf/Catalina/localhost/fedora.xml	
+	cp /vagrant/fedoraTomcatConf.xml /usr/share/tomcat/conf/Catalina/localhost/fedora.xml	
 	cd /usr/share/tomcat/webapps/
 	if [ -d /usr/share/tomcat/webapps/fedora ] ; then 
 		rm -rf /usr/share/tomcat/webapps/fedora;
 	fi
-	tar -xzf /vagrant/data/fedoraNoWar.tgz
+	tar -xzf $BIN/fedoraNoWar.tgz
 	rm -f fedora.war
 	systemctl enable tomcat
 	systemctl start tomcat
@@ -293,8 +299,8 @@ function prepareIRODSDirectoryLayout(){
 }
 
 function installIRODS(){
-	yum -y localinstall /vagrant/data/irods-icat-4.1.11-centos7-x86_64.rpm
-	yum -y localinstall /vagrant/data/irods-database-plugin-postgres-1.11-centos7-x86_64.rpm
+	yum -y localinstall $BIN/irods-icat-4.1.11-centos7-x86_64.rpm
+	yum -y localinstall $BIN/irods-database-plugin-postgres-1.11-centos7-x86_64.rpm
 	if [ -f /usr/lib64/psqlodbc.so ] ; then	rm -f /usr/lib64/psqlodbc.so  
 	fi
 	if [ -f /usr/pgsql-9.3/lib/psqlodbc.so ] ; then
@@ -313,12 +319,12 @@ function configureIRODS(){
 	    service irods stop
 	    rm -f /etc/init.d/irods
 	fi
-	cp /vagrant/data/irodsC7 /etc/systemd/system/irods.service
+	cp /vagrant/irodsC7 /etc/systemd/system/irods.service
 	systemctl enable irods
 	systemctl start irods
-	ZONES="12345"	
+	
 	echo "Zone $ZONES"
-	ZONEKEY="dns"$ZONES"dns"$ZONES"dns"$ZONES"dns"$ZONES
+	
 	echo "Zonenkey $ZONEKEY"
 	echo "Default-Dir $CACHEDIR"
 	printf "irods\nirods\n$ZONENAME\n1247\n\n\n$CACHEDIR\ndns$ZONES\n$ZONEKEY\n1248\ndnszone-dnszone-dnszone-dnszone-\noff\nrods\n$RODSPASS\nyes\nlocalhost\n\n\n\n$ICATPASS\nyes\n" | /var/lib/irods/packaging/setup_irods.sh
@@ -345,29 +351,29 @@ function createIRODSResources(){
 }
 
 function installElasticsearch(){
-	yum -y localinstall /vagrant/data/elasticsearch-0.90.3.noarch.rpm
+	yum -y localinstall $BIN/elasticsearch-0.90.3.noarch.rpm
 	sed -i "s/# cluster.name/cluster.name: cluster_ci\n# cluster.name/g" /etc/elasticsearch/elasticsearch.yml
 	systemctl restart elasticsearch
-	/vagrant/data/initES.sh "portal_ci_test" 
-	/vagrant/data/initES.sh "portal_ci"
+	/vagrant/initES.sh "portal_ci_test" 
+	/vagrant/initES.sh "portal_ci"
 }
 
 function installGradleGrails(){
 	mkdir -p /ci/projects; 
 	cd /ci/projects
 	mkdir -p ~irods/.m2
-	cp /vagrant/data/MavenSettings.xml  ~irods/.m2/settings.xml
+	cp /vagrant/MavenSettings.xml  ~irods/.m2/settings.xml
 	mkdir -p ~/.m2
-	cp /vagrant/data/MavenSettings.xml  ~/.m2/settings.xml
+	cp /vagrant/MavenSettings.xml  ~/.m2/settings.xml
 	chown -R irods:irods ~irods/.m2
 	ln -s /ci/projects/apache-maven-3.6.0/bin/mvn /usr/bin/mvn
 	echo  'export M2_HOME=/ci/projects/apache-maven-3.6.0' >> /etc/profile.d/dns.sh
 	echo  'export PATH=${M2_HOME}/bin:${PATH}' >> /etc/profile.d/dns.sh
-	cp /vagrant/data/grails-3.2.11.tgz /ci/projects/grails-3.2.11.tgz
+	cp $BIN/grails-3.2.11.tgz /ci/projects/grails-3.2.11.tgz
 	cd /ci/projects/; 
 	tar -xzf grails-3.2.11.tgz
 	rm -f grails-3.2.11.tgz
-	cp /vagrant/data/gradle-3.4.1-bin.tgz /ci/projects/gradle-3.4.1-bin.tgz
+	cp $BIN/gradle-3.4.1-bin.tgz /ci/projects/gradle-3.4.1-bin.tgz
 	cd /ci/projects/; 
 	tar -xzf gradle-3.4.1-bin.tgz
 	rm -f gradle-3.4.1-bin.tgz
@@ -417,6 +423,8 @@ DBPASS="KKLmno13g"
 ARCHRESC="ciArchiveResource"
 LZAPATH="/ci/archiveStorage"
 LZARESCG="ciArchiveRescGroup"
+ZONES="12345"	
+ZONEKEY="dns"$ZONES"dns"$ZONES"dns"$ZONES"dns"$ZONES
 
 #Preparations
 checkSystemPrerequisites
@@ -433,16 +441,16 @@ downloadBinaries
 installPackages
 installEPEL
 installDNS
-installJava
+#installJava
 configureClamAV
 configureTomcat
 configurePostgres
 createPostgresDBs     
-installFedora
+#installFedora
 installIRODS
 configureIRODS
 createIRODSResources
-installElasticsearch
+#installElasticsearch
 installGradleGrails
 installContentBroker
 linkPythonToCI
