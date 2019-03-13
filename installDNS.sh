@@ -30,27 +30,31 @@ function downloadBinariesPrerequisites(){
 	download jdk-8u181-linux-x64.rpm $server
 }
 
+function checkSystemPrerequisites(){
+	if [ -f /etc/redhat-release ] ; then
+		export HOSTOS=$(cat /etc/system-release-cpe | cut -f 3 -d : )
+		export HOSTREL=$( rpm -qf /etc/redhat-release | cut -f 4,5 -d - | cut -f 1-2 -d .)
+		export SYSDVER=$(cat /etc/system-release-cpe | cut -f 5 -d : | cut -c 1)
+	else 
+		echo "Skript ist nur fuer RedHat-OS angepasst" 
+		exit 1;
+		#exit $?
+	fi
+
+	if [ $SYSDVER -ne "7" ] ; then
+		echo "Skript ist nur fuer RedHat-OS 7 nicht fuer $SYSDVER" 
+		exit 1;
+	fi
+
+	if [ ! -d /ci ]; then
+	    mkdir /ci
+	fi
+}
+
 setSCVariable
 downloadBinariesPrerequisites
+checkSystemPrerequisites
 
-if [ -f /etc/redhat-release ] ; then
-	export HOSTOS=$(cat /etc/system-release-cpe | cut -f 3 -d : )
-	export HOSTREL=$( rpm -qf /etc/redhat-release | cut -f 4,5 -d - | cut -f 1-2 -d .)
-	export SYSDVER=$(cat /etc/system-release-cpe | cut -f 5 -d : | cut -c 1)
-else 
-	echo "Skript ist nur fuer RedHat-OS angepasst" 
-	exit 1;
-	#exit $?
-fi
-
-if [ $SYSDVER -ne "7" ] ; then
-	echo "Skript ist nur fuer RedHat-OS 7 nicht fuer $SYSDVER" 
-	exit 1;
-fi
-
-if [ ! -d /ci ]; then
-    mkdir /ci
-fi
 
 if [ $( localectl | grep "System Locale" | cut -f 2 -d : | cut -f 2 -d = ) != "en_US.UTF-8" ] ; then
 	localectl set-locale LANG=en_US.UTF-8
