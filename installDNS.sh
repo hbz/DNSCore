@@ -200,16 +200,67 @@ function configurePostgres(){
 	ANSWER=`ps -ef | grep -i pgsql `
 	echo "postgres ANSWER: $ANSWER"
 }
+
+function createPostgresDBs(){
+	IUSER=postgres
+	iusrcmd "/usr/pgsql-9.3/bin/createuser -s -d -r -l irods"
+	iusrcmd "/usr/pgsql-9.3/bin/createuser -s -d -r -l fed_usr"
+	iusrcmd "/usr/pgsql-9.3/bin/createuser -s -d -r -l cb_usr"
+	iusrcmd "/usr/pgsql-9.3/bin/dropdb CB"
+	iusrcmd "/usr/pgsql-9.3/bin/dropdb ICAT"
+	iusrcmd "/usr/pgsql-9.3/bin/dropdb FED"
+	iusrcmd "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods CB"
+	iusrcmd "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods ICAT"
+	iusrcmd "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods FED"
+	echo "alter role irods with password '"$FEDPASS"';" > ~postgres/alter-irods-user.sql
+	echo "alter role irods with password '"$ICATPASS"';" >> ~postgres/alter-irods-user.sql
+	echo "alter role irods with password '"$RODSPASS"';" >> ~postgres/alter-irods-user.sql	
+	cp $SCPATH/data/client-encoding-utf8.sql ~postgres
+	cp $SCPATH/data/createDB.sql ~postgres
+	iusrcmd "/usr/bin/psql -f ~postgres/alter-irods-user.sql"
+	iusrcmd "/usr/bin/psql -f ~postgres/client-encoding-utf8.sql"
+	iusrcmd "/usr/bin/psql -f ~postgres/createDB.sql"
+}
+
+function installFedora(){
+	if [ "1" == "1" ] ; then # dieser Bereich sollte spaeter durch das fedora installskript ersetzt werden
+		echo "fedora install"
+		cd $SCPATH/data/ 
+		tar -xzf $SCPATH/data/FED-DB-20180517.dump.tgz
+		psql -d FED -U fed_usr < ./FED-DB-20180517.dump
+		rm -f $SCPATH/data/FED-DB-20180517.dump
+		sleep 1
+		echo "fedora unpack tar"
+		tar -xzf $SCPATH/data/fedora-files.tgz
+		if [ -d /ci/fedora ] ; then
+			rm -rf /ci/fedora
+		fi
+		mv fedora /ci/
+		chown -R irods:developer /ci/fedora
+		rm -rf fedora
+	
+		systemctl stop tomcat
+		sed -i "s/unpackWARs=\"true\" autoDeploy=\"true\"/unpackWARs=\"true\" autoDeploy=\"false\"/g" /usr/share/tomcat/conf/server.xml 
+		cp $SCPATH/data/fedoraTomcatConf.xml /usr/share/tomcat/conf/Catalina/localhost/fedora.xml	
+		cd /usr/share/tomcat/webapps/
+		if [ -d /usr/share/tomcat/webapps/fedora ] ; then 
+			rm -rf /usr/share/tomcat/webapps/fedora;
+		fi
+		tar -xzf $SCPATH/data/fedoraNoWar.tgz
+		rm -f fedora.war
+		systemctl enable tomcat
+		systemctl start tomcat
+	fi
+	sleep 1
+}
+
 setSCVariable
 downloadBinariesPrerequisites
 checkSystemPrerequisites
 setLocales
 shutdownFirewall
-
-
 ANSWER=`ls -l /etc/yum.repos.d/ | wc -l `
 echo "YUM RepoANSWER: $ANSWER"
-
 installEPEL
 installDNS
 setEnvironmentVariables
@@ -219,65 +270,8 @@ checkStateOfInstalledPackages
 configureClamAV
 configureTomcat
 configurePostgres
-
-
-
-
-IUSER=postgres
-        
-# DB ICAT and FED anlegen:
-iusrcmd "/usr/pgsql-9.3/bin/createuser -s -d -r -l irods"
-iusrcmd "/usr/pgsql-9.3/bin/createuser -s -d -r -l fed_usr"
-iusrcmd "/usr/pgsql-9.3/bin/createuser -s -d -r -l cb_usr"
-#iusrcmd "/usr/pgsql-9.3/bin/createuser -s -D -r -l backup"
-
-iusrcmd "/usr/pgsql-9.3/bin/dropdb CB"
-iusrcmd "/usr/pgsql-9.3/bin/dropdb ICAT"
-iusrcmd "/usr/pgsql-9.3/bin/dropdb FED"
-iusrcmd "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods CB"
-iusrcmd "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods ICAT"
-iusrcmd "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods FED"
-echo "alter role irods with password '"$FEDPASS"';" > ~postgres/alter-irods-user.sql
-echo "alter role irods with password '"$ICATPASS"';" >> ~postgres/alter-irods-user.sql
-echo "alter role irods with password '"$RODSPASS"';" >> ~postgres/alter-irods-user.sql
-        
-cp $SCPATH/data/client-encoding-utf8.sql ~postgres
-cp $SCPATH/data/createDB.sql ~postgres
-iusrcmd "/usr/bin/psql -f ~postgres/alter-irods-user.sql"
-iusrcmd "/usr/bin/psql -f ~postgres/client-encoding-utf8.sql"
-iusrcmd "/usr/bin/psql -f ~postgres/createDB.sql"
-
-## fedora install 
-
-if [ "1" == "1" ] ; then # dieser Bereich sollte spaeter durch das fedora installskript ersetzt werden
-	echo "fedora install"
-	cd $SCPATH/data/ 
-	tar -xzf $SCPATH/data/FED-DB-20180517.dump.tgz
-	psql -d FED -U fed_usr < ./FED-DB-20180517.dump
-	rm -f $SCPATH/data/FED-DB-20180517.dump
-	sleep 1
-	echo "fedora unpack tar"
-	tar -xzf $SCPATH/data/fedora-files.tgz
-	if [ -d /ci/fedora ] ; then
-		rm -rf /ci/fedora
-	fi
-	mv fedora /ci/
-	chown -R irods:developer /ci/fedora
-	rm -rf fedora
-	
-	systemctl stop tomcat
-	sed -i "s/unpackWARs=\"true\" autoDeploy=\"true\"/unpackWARs=\"true\" autoDeploy=\"false\"/g" /usr/share/tomcat/conf/server.xml 
-	cp $SCPATH/data/fedoraTomcatConf.xml /usr/share/tomcat/conf/Catalina/localhost/fedora.xml	
-	cd /usr/share/tomcat/webapps/
-	if [ -d /usr/share/tomcat/webapps/fedora ] ; then 
-		rm -rf /usr/share/tomcat/webapps/fedora;
-	fi
-	tar -xzf $SCPATH/data/fedoraNoWar.tgz
-	rm -f fedora.war
-	systemctl enable tomcat
-	systemctl start tomcat
-fi
-sleep 1
+createPostgresDBs     
+installFedora
 
 yum -y install perl-JSON python-jsonschema python-requests python-psutil authd
 
