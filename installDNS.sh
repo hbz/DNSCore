@@ -147,7 +147,7 @@ setUpUsers
 
 
 
-yum update
+
 
 java -version
 ls -l /usr/bin/java
