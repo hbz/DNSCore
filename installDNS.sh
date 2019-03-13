@@ -110,6 +110,24 @@ function setEnvironmentVariables(){
 		echo  ' ' >> /etc/profile.d/dns.sh
 	fi
 }
+
+function setUpUsers(){
+	### User anlegen
+	groupadd -g 401 irods
+	groupadd -g 402 postgres   
+	groupadd -f -g 403 tomcat
+	#groupadd -g 404 isupport 
+	useradd -c "irods user" -d /home/irods -s /bin/bash -g 401 -u 401 irods
+	useradd -c "postgres db user" -d /home/postgres -s /bin/bash -g 402 -u 402 postgres
+	useradd -c "tomcat user" -d /home/tomcat -s /bin/bash -g 403 -G 401 -u 403 tomcat
+	#useradd -c "irods support user" -d /home/isupport -s /bin/bash -g 404 -G 401 -u 404 isupport
+	cat /etc/group | grep ":40"
+	cat /etc/passwd | grep ":40"
+	groupadd -g 12348 developer
+	usermod -a -G developer irods
+	####script e
+}
+
 setSCVariable
 downloadBinariesPrerequisites
 checkSystemPrerequisites
@@ -123,30 +141,10 @@ echo "YUM RepoANSWER: $ANSWER"
 installEPEL
 installDNS
 setEnvironmentVariables
+setUpUsers
 
 
 
-
-### User anlegen
-
-
-groupadd -g 401 irods
-groupadd -g 402 postgres   
-groupadd -f -g 403 tomcat
-#groupadd -g 404 isupport 
-
-
-useradd -c "irods user" -d /home/irods -s /bin/bash -g 401 -u 401 irods
-useradd -c "postgres db user" -d /home/postgres -s /bin/bash -g 402 -u 402 postgres
-useradd -c "tomcat user" -d /home/tomcat -s /bin/bash -g 403 -G 401 -u 403 tomcat
-#useradd -c "irods support user" -d /home/isupport -s /bin/bash -g 404 -G 401 -u 404 isupport
-cat /etc/group | grep ":40"
-cat /etc/passwd | grep ":40"
-
-groupadd -g 12348 developer
-usermod -a -G developer irods
-
-####script e
 
 
 yum update
