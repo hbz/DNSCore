@@ -48,13 +48,8 @@ function installPackages(){
 	sudo yum -y install authd
 }
 
-function setSCVariable(){
-	export SCPATH=$(pwd)
-	echo "SCPATH $SCPATH"
-}
-
 function download(){
-	cd /data
+	cd /vagrant/data
 	filename=$1
 	url=$2
 	if [ -f $filename ]
@@ -66,7 +61,7 @@ function download(){
 	cd -
 }
 
-function downloadBinariesPrerequisites(){
+function downloadBinaries(){
 	server=https://data.danrw.de/download/
 	download dns-7-repo.tgz $server
 	download epel-release-latest-7.noarch.rpm https://dl.fedoraproject.org/pub/epel/
@@ -125,16 +120,16 @@ function shutdownFirewall(){
 
 function installEPEL(){
 	if [ $(grep -i "epel" /etc/yum.repos.d/*repo | wc -l ) == "0" ] ; then
-		yum -y localinstall $SCPATH/data/epel-release-latest-7.noarch.rpm
-		rpm --import $SCPATH/data/RPM-GPG-KEY-EPEL-7
+		yum -y localinstall /vagrant/data/epel-release-latest-7.noarch.rpm
+		rpm --import /vagrant/data/RPM-GPG-KEY-EPEL-7
 	fi
 }
 
 function installDNS(){	
-	cp $SCPATH/data/dns-7-repo.tgz /etc/yum.repos.d
+	cp /vagrant/data/dns-7-repo.tgz /etc/yum.repos.d
 	cd /etc/yum.repos.d; 
 	tar -xzvf dns-7-repo.tgz
-	rpm --import $SCPATH/data/RPM-GPG-KEY-nux
+	rpm --import /vagrant/data/RPM-GPG-KEY-nux
 	rm -f dns-7-repo.tgz
 	yum update
 
@@ -142,7 +137,7 @@ function installDNS(){
 
 function setEnvironmentVariables(){
 	if [ ! -f /etc/profile.d/dns.sh ] ; then 
-		cp $SCPATH/data/profileDns.sh  /etc/profile.d/dns.sh
+		cp /vagrant/data/profileDns.sh  /etc/profile.d/dns.sh
 	else
 		echo  'export FEDORA_HOME=/ci/fedora' >> /etc/profile.d/dns.sh
 		echo  'export CATALINA_HOME=/usr/share/tomcat' >> /etc/profile.d/dns.sh
@@ -164,6 +159,8 @@ function setUpUsers(){
 	cat /etc/passwd | grep ":40"
 	groupadd -g 12348 developer
 	usermod -a -G developer irods
+	groupadd -g 396 elasticsearch
+	useradd -c "elasticsearch" -d /usr/share/elasticsearch -s /sbin/nologin -g 396 -u 397 elasticsearch
 }
 
 function installJava(){
@@ -172,7 +169,7 @@ function installJava(){
 	if [ ! -d /usr/java/jdk1.8.0_181-amd64 ] ; then
 	   echo "JDK 1.8.0.181 wird installiert."
 	   mkdir /usr/java
-	   yum localinstall -y $SCPATH/data/jdk-8u181-linux-x64.rpm
+	   yum localinstall -y /vagrant/data/jdk-8u181-linux-x64.rpm
 	fi
 
 	ln -s /usr/java/jdk1.8.0_181-amd64 /usr/java/latest 
@@ -191,17 +188,17 @@ function installJava(){
 }
 
 function checkStateOfInstalledPackages(){
-	ANSWER=$((`rpm -qa | grep -i ImageMagick `))
+	ANSWER=$(rpm -qa | grep -i ImageMagick )
 	echo "ImageMagick ANSWER: $ANSWER"
-	ANSWER=$((`rpm -qa | grep -i ffmpeg  `))
+	ANSWER=$(rpm -qa | grep -i ffmpeg )
 	echo "ffmpeg ANSWER: $ANSWER"
-	ANSWER=$((`rpm -qa | grep -i ghostscript`))
+	ANSWER=$(rpm -qa | grep -i ghostscript)
 	echo "ghostscript ANSWER: $ANSWER"
-	ANSWER=$((`rpm -qa | grep -i sox `))
+	ANSWER=$(rpm -qa | grep -i sox )
 	echo "sox ANSWER: $ANSWER"
-	ANSWER=$((`rpm -qa | grep -i handbrake `))
+	ANSWER=$(rpm -qa | grep -i handbrake )
 	echo "handbrake ANSWER: $ANSWER"
-	ANSWER=$((`rpm -qa | grep -i tomcat | wc -l ` ))
+	ANSWER=$(rpm -qa | grep -i tomcat | wc -l )
 	echo "tomcat ANSWER: $ANSWER"
 }
 
@@ -212,14 +209,14 @@ function configureClamAV(){
 
 function configureTomcat(){
 	mkdir /usr/share/tomcat/.grails/
-	cp $SCPATH/data/daweb3_properties.groovy /usr/share/tomcat/.grails/daweb3_properties.groovy
+	cp /vagrant/data/daweb3_properties.groovy /usr/share/tomcat/.grails/daweb3_properties.groovy
 	chmod 644 /usr/share/tomcat/.grails/daweb3_properties.groovy
 	chown tomcat:tomcat -R /usr/share/tomcat/.grails
 }
 
 function configurePostgres(){
 	mv /var/lib/pgsql/9.3/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.confBU
-	cp -f $SCPATH/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.conf
+	cp -f /vagrant/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.conf
 	sed -i "s/#listen_addresses/listen_addresses = '*'\n#listen_addresses/g" /var/lib/pgsql/9.3/data/postgresql.conf 
 	sed -i 's/max_connections = 100/max_connections = 200/g' /var/lib/pgsql/9.3/data/postgresql.conf   # TODO: wird nichts ersetzt
 	systemctl enable postgresql-9.3
@@ -230,38 +227,36 @@ function configurePostgres(){
 	ANSWER=`ps -ef | grep -i pgsql `
 	echo "postgres ANSWER: $ANSWER"
 }
-function iusrcmd {  
-	 su - $IUSER -c "$1" 
-}
+
 function createPostgresDBs(){
-	iusrcmd "/usr/pgsql-9.3/bin/createuser -s -d -r -l irods"
-	iusrcmd "/usr/pgsql-9.3/bin/createuser -s -d -r -l fed_usr"
-	iusrcmd "/usr/pgsql-9.3/bin/createuser -s -d -r -l cb_usr"
-	iusrcmd "/usr/pgsql-9.3/bin/dropdb CB"
-	iusrcmd "/usr/pgsql-9.3/bin/dropdb ICAT"
-	iusrcmd "/usr/pgsql-9.3/bin/dropdb FED"
-	iusrcmd "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods CB"
-	iusrcmd "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods ICAT"
-	iusrcmd "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods FED"
+	su - postgres -c "/usr/pgsql-9.3/bin/createuser -s -d -r -l irods"
+	su - postgres -c "/usr/pgsql-9.3/bin/createuser -s -d -r -l fed_usr"
+	su - postgres -c "/usr/pgsql-9.3/bin/createuser -s -d -r -l cb_usr"
+	su - postgres -c "/usr/pgsql-9.3/bin/dropdb CB"
+	su - postgres -c "/usr/pgsql-9.3/bin/dropdb ICAT"
+	su - postgres -c "/usr/pgsql-9.3/bin/dropdb FED"
+	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods CB"
+	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods ICAT"
+	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods FED"
 	echo "alter role irods with password '"$FEDPASS"';" > ~postgres/alter-irods-user.sql
 	echo "alter role irods with password '"$ICATPASS"';" >> ~postgres/alter-irods-user.sql
 	echo "alter role irods with password '"$RODSPASS"';" >> ~postgres/alter-irods-user.sql	
-	cp $SCPATH/data/client-encoding-utf8.sql ~postgres
-	cp $SCPATH/data/createDB.sql ~postgres
-	iusrcmd "/usr/bin/psql -f ~postgres/alter-irods-user.sql"
-	iusrcmd "/usr/bin/psql -f ~postgres/client-encoding-utf8.sql"
-	iusrcmd "/usr/bin/psql -f ~postgres/createDB.sql"
+	cp /vagrant/data/client-encoding-utf8.sql ~postgres
+	cp /vagrant/data/createDB.sql ~postgres
+	su - postgres -c "/usr/bin/psql -f ~postgres/alter-irods-user.sql"
+	su - postgres -c "/usr/bin/psql -f ~postgres/client-encoding-utf8.sql"
+	su - postgres -c "/usr/bin/psql -f ~postgres/createDB.sql"
 }
 
 function installFedora(){
 	echo "fedora install"
-	cd $SCPATH/data/ 
-	tar -xzf $SCPATH/data/FED-DB-20180517.dump.tgz
+	cd /vagrant/data/ 
+	tar -xzf /vagrant/data/FED-DB-20180517.dump.tgz
 	psql -d FED -U fed_usr < ./FED-DB-20180517.dump
-	rm -f $SCPATH/data/FED-DB-20180517.dump
+	rm -f /vagrant/data/FED-DB-20180517.dump
 	sleep 1
 	echo "fedora unpack tar"
-	tar -xzf $SCPATH/data/fedora-files.tgz
+	tar -xzf /vagrant/data/fedora-files.tgz
 	if [ -d /ci/fedora ] ; then
 		rm -rf /ci/fedora
 	fi
@@ -270,12 +265,12 @@ function installFedora(){
 	rm -rf fedora
 	systemctl stop tomcat
 	sed -i "s/unpackWARs=\"true\" autoDeploy=\"true\"/unpackWARs=\"true\" autoDeploy=\"false\"/g" /usr/share/tomcat/conf/server.xml 
-	cp $SCPATH/data/fedoraTomcatConf.xml /usr/share/tomcat/conf/Catalina/localhost/fedora.xml	
+	cp /vagrant/data/fedoraTomcatConf.xml /usr/share/tomcat/conf/Catalina/localhost/fedora.xml	
 	cd /usr/share/tomcat/webapps/
 	if [ -d /usr/share/tomcat/webapps/fedora ] ; then 
 		rm -rf /usr/share/tomcat/webapps/fedora;
 	fi
-	tar -xzf $SCPATH/data/fedoraNoWar.tgz
+	tar -xzf /vagrant/data/fedoraNoWar.tgz
 	rm -f fedora.war
 	systemctl enable tomcat
 	systemctl start tomcat
@@ -298,8 +293,8 @@ function prepareIRODSDirectoryLayout(){
 }
 
 function installIRODS(){
-	yum -y localinstall $SCPATH/data/irods-icat-4.1.11-centos7-x86_64.rpm
-	yum -y localinstall $SCPATH/data/irods-database-plugin-postgres-1.11-centos7-x86_64.rpm
+	yum -y localinstall /vagrant/data/irods-icat-4.1.11-centos7-x86_64.rpm
+	yum -y localinstall /vagrant/data/irods-database-plugin-postgres-1.11-centos7-x86_64.rpm
 	if [ -f /usr/lib64/psqlodbc.so ] ; then	rm -f /usr/lib64/psqlodbc.so  
 	fi
 	if [ -f /usr/pgsql-9.3/lib/psqlodbc.so ] ; then
@@ -318,7 +313,7 @@ function configureIRODS(){
 	    service irods stop
 	    rm -f /etc/init.d/irods
 	fi
-	cp $SCPATH/data/irodsC7 /etc/systemd/system/irods.service
+	cp /vagrant/data/irodsC7 /etc/systemd/system/irods.service
 	systemctl enable irods
 	systemctl start irods
 	ZONES="12345"	
@@ -332,7 +327,7 @@ function configureIRODS(){
 	sleep 1
 	sed -i 's!\"default_dir_mode\": \"0750\"!\"default_dir_mode\": \"0775\"!g' /etc/irods/server_config.json
 	sed -i 's!\"default_file_mode\": \"0600\"!\"default_file_mode\": \"0664\"!g' /etc/irods/server_config.json
-	iusrcmd "printf 'y\n' | /usr/bin/iadmin modresc demoResc name $CACHERESC"
+	su - irods -c  "printf 'y\n' | /usr/bin/iadmin modresc demoResc name $CACHERESC"
 	systemctl stop irods
 	sleep 1
 	sed -i 's/SHA256/MD5/g' ~irods/.irods/irods_environment.json
@@ -343,38 +338,36 @@ function configureIRODS(){
 }
 
 function createIRODSResources(){
-	iusrcmd "printf 'y\n' | /usr/bin/iadmin mkresc $ARCHRESC unixfilesystem $OWNHOST:$LZAPATH"
-	iusrcmd "printf 'y\n' | /usr/bin/iadmin mkresc $LZARESCG passthru"
-	iusrcmd "printf 'y\n' | /usr/bin/iadmin addchildtoresc $LZARESCG $ARCHRESC" 
-	iusrcmd "printf 'y\n' | /usr/bin/iadmin modresc ciWorkingResource path $WORKDIR"
+	su - irods -c  "printf 'y\n' | /usr/bin/iadmin mkresc $ARCHRESC unixfilesystem $OWNHOST:$LZAPATH"
+	su - irods -c  "printf 'y\n' | /usr/bin/iadmin mkresc $LZARESCG passthru"
+	su - irods -c  "printf 'y\n' | /usr/bin/iadmin addchildtoresc $LZARESCG $ARCHRESC" 
+	su - irods -c  "printf 'y\n' | /usr/bin/iadmin modresc ciWorkingResource path $WORKDIR"
 }
 
 function installElasticsearch(){
-	groupadd -g 396 elasticsearch
-	useradd -c "elasticsearch" -d /usr/share/elasticsearch -s /sbin/nologin -g 396 -u 397 elasticsearch
-	yum -y localinstall $SCPATH/data/elasticsearch-0.90.3.noarch.rpm
+	yum -y localinstall /vagrant/data/elasticsearch-0.90.3.noarch.rpm
 	sed -i "s/# cluster.name/cluster.name: cluster_ci\n# cluster.name/g" /etc/elasticsearch/elasticsearch.yml
 	systemctl restart elasticsearch
-	$SCPATH/data/initES.sh "portal_ci_test" 
-	$SCPATH/data/initES.sh "portal_ci"
+	/vagrant/data/initES.sh "portal_ci_test" 
+	/vagrant/data/initES.sh "portal_ci"
 }
 
 function installGradleGrails(){
 	mkdir -p /ci/projects; 
 	cd /ci/projects
 	mkdir -p ~irods/.m2
-	cp $SCPATH/data/MavenSettings.xml  ~irods/.m2/settings.xml
+	cp /vagrant/data/MavenSettings.xml  ~irods/.m2/settings.xml
 	mkdir -p ~/.m2
-	cp $SCPATH/data/MavenSettings.xml  ~/.m2/settings.xml
+	cp /vagrant/data/MavenSettings.xml  ~/.m2/settings.xml
 	chown -R irods:irods ~irods/.m2
 	ln -s /ci/projects/apache-maven-3.6.0/bin/mvn /usr/bin/mvn
 	echo  'export M2_HOME=/ci/projects/apache-maven-3.6.0' >> /etc/profile.d/dns.sh
 	echo  'export PATH=${M2_HOME}/bin:${PATH}' >> /etc/profile.d/dns.sh
-	cp $SCPATH/data/grails-3.2.11.tgz /ci/projects/grails-3.2.11.tgz
+	cp /vagrant/data/grails-3.2.11.tgz /ci/projects/grails-3.2.11.tgz
 	cd /ci/projects/; 
 	tar -xzf grails-3.2.11.tgz
 	rm -f grails-3.2.11.tgz
-	cp $SCPATH/data/gradle-3.4.1-bin.tgz /ci/projects/gradle-3.4.1-bin.tgz
+	cp /vagrant/data/gradle-3.4.1-bin.tgz /ci/projects/gradle-3.4.1-bin.tgz
 	cd /ci/projects/; 
 	tar -xzf gradle-3.4.1-bin.tgz
 	rm -f gradle-3.4.1-bin.tgz
@@ -411,6 +404,7 @@ function linkPythonToCI(){
 	ln -s /usr/bin/python2.7 /ci/python/python
 }
 
+OWNHOST=$(hostname -s)
 ZONENAME="ci"
 HOSTNR=1
 RODSPASS="sdor78-bvc"
@@ -424,42 +418,37 @@ ARCHRESC="ciArchiveResource"
 LZAPATH="/ci/archiveStorage"
 LZARESCG="ciArchiveRescGroup"
 
-installPackages
-setSCVariable
-downloadBinariesPrerequisites
+#Preparations
 checkSystemPrerequisites
 setLocales
 shutdownFirewall
-ANSWER=`ls -l /etc/yum.repos.d/ | wc -l `
-echo "YUM RepoANSWER: $ANSWER"
+#Create users and install directory
+setUpUsers
+setEnvironmentVariables
+createStorageAreas
+prepareIRODSDirectoryLayout
+#Download third party software
+downloadBinaries
+#Install
+installPackages
 installEPEL
 installDNS
-setEnvironmentVariables
-setUpUsers
 installJava
-checkStateOfInstalledPackages
 configureClamAV
 configureTomcat
 configurePostgres
-IUSER=postgres
 createPostgresDBs     
 installFedora
-IUSER=irods
-echo "Beginne iRODS Install"
-prepareIRODSDirectoryLayout
 installIRODS
-IUSER=irods
-export IUSER=irods
 configureIRODS
-OWNHOST=$(hostname -s)
 createIRODSResources
 installElasticsearch
 installGradleGrails
 installContentBroker
-createStorageAreas
 linkPythonToCI
 chmod -R g+w /ci
-
+#Report
+checkStateOfInstalledPackages
 #cd /ci/DNSCore
 #iusrcmd "mvn install -Pci"
 
