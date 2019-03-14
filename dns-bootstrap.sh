@@ -34,11 +34,11 @@ function installPackages(){
 	sudo yum install -y tomcat
 	sudo yum -y install tomcat-webapps
 	sudo yum remove postgresql\* -y
-	sudo yum -y install postgresql93-server
-	sudo yum -y install postgresql93-contrib
-	sudo yum -y install postgresql93-devel
-	sudo yum -y install postgresql93-libs
-	sudo yum -y install postgresql93-odbc
+	sudo yum -y install postgresql93-server --nogpgcheck
+	sudo yum -y install postgresql93-contrib --nogpgcheck
+	sudo yum -y install postgresql93-devel --nogpgcheck
+	sudo yum -y install postgresql93-libs --nogpgcheck
+	sudo yum -y install postgresql93-odbc --nogpgcheck
 	sudo yum -y install pgadmin3_93.x86_64 --nogpgcheck
 	sudo /usr/pgsql-9.3/bin/postgresql93-setup initdb
 	sudo systemctl stop postgresql-9.3
@@ -67,7 +67,6 @@ function downloadBinaries(){
 	server=https://data.danrw.de/download/
 	download dns-7-repo.tgz $server
 	download epel-release-latest-7.noarch.rpm https://dl.fedoraproject.org/pub/epel/
-	download FED-DB-20180517.dump.tgz $server
 	download gradle-3.4.1-bin.tgz $server
 	download grails-3.2.11.tgz $server
 	download irods-database-plugin-postgres-1.11-centos7-x86_64.rpm https://files.renci.org/pub/irods/releases/4.1.11/centos7/
@@ -149,8 +148,6 @@ function setUpUsers(){
 	cat /etc/passwd | grep ":40"
 	groupadd -g 12348 developer
 	usermod -a -G developer irods
-	groupadd -g 396 elasticsearch
-	useradd -c "elasticsearch" -d /usr/share/elasticsearch -s /sbin/nologin -g 396 -u 397 elasticsearch
 }
 
 function checkStateOfInstalledPackages(){
@@ -196,15 +193,11 @@ function configurePostgres(){
 
 function createPostgresDBs(){
 	su - postgres -c "/usr/pgsql-9.3/bin/createuser -s -d -r -l irods"
-	su - postgres -c "/usr/pgsql-9.3/bin/createuser -s -d -r -l fed_usr"
 	su - postgres -c "/usr/pgsql-9.3/bin/createuser -s -d -r -l cb_usr"
 	su - postgres -c "/usr/pgsql-9.3/bin/dropdb CB"
 	su - postgres -c "/usr/pgsql-9.3/bin/dropdb ICAT"
-	su - postgres -c "/usr/pgsql-9.3/bin/dropdb FED"
 	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods CB"
 	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods ICAT"
-	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods FED"
-	echo "alter role irods with password '"$FEDPASS"';" > ~postgres/alter-irods-user.sql
 	echo "alter role irods with password '"$ICATPASS"';" >> ~postgres/alter-irods-user.sql
 	echo "alter role irods with password '"$RODSPASS"';" >> ~postgres/alter-irods-user.sql	
 	cp /vagrant/client-encoding-utf8.sql ~postgres
@@ -260,6 +253,7 @@ function configureIRODS(){
 	echo "Default-Dir $CACHEDIR"
 	printf "irods\nirods\n$ZONENAME\n1247\n\n\n$CACHEDIR\ndns$ZONES\n$ZONEKEY\n1248\ndnszone-dnszone-dnszone-dnszone-\noff\nrods\n$RODSPASS\nyes\nlocalhost\n\n\n\n$ICATPASS\nyes\n" | /var/lib/irods/packaging/setup_irods.sh
 	sleep 3
+        printf "IRODS_SERVICE_ACCOUNT_NAME=irods\nIRODS_SERVICE_GROUP_NAME=irods\n" > /etc/irods/service_account.config
 	systemctl start irods 
 	sleep 1
 	sed -i 's!\"default_dir_mode\": \"0750\"!\"default_dir_mode\": \"0775\"!g' /etc/irods/server_config.json
@@ -289,8 +283,6 @@ function installGradleGrails(){
 	mkdir -p ~/.m2
 	cp /vagrant/MavenSettings.xml  ~/.m2/settings.xml
 	chown -R irods:irods ~irods/.m2
-	#echo  'export M2_HOME=/ci/projects/apache-maven-3.6.0' >> /etc/profile.d/dns.sh
-	#echo  'export PATH=${M2_HOME}/bin:${PATH}' >> /etc/profile.d/dns.sh
 	cp $BIN/grails-3.2.11.tgz /ci/projects/grails-3.2.11.tgz
 	cd /ci/projects/; 
 	tar -xzf grails-3.2.11.tgz
@@ -323,13 +315,15 @@ function createStorageAreas(){
 	mkdir -p /ci/storage/UserArea/rods
 	mkdir -p /ci/storage/UserArea/TEST/incoming
 	mkdir -p /ci/storage/UserArea/TEST/outgoing
-	chown -R irods:developer /ci/DNSCore
-	chown -R irods:developer /ci/storage
 }
 
 function linkPythonToCI(){
 	mkdir -p /ci/python/
 	ln -s /usr/bin/python2.7 /ci/python/python
+}
+
+function setUmask(){
+	printf "umask 002\n" >> /etc/profile
 }
 
 #Preparations
@@ -338,6 +332,7 @@ setLocales
 shutdownFirewall
 #Create users and install directory
 setUpUsers
+setUmask
 createStorageAreas
 prepareIRODSDirectoryLayout
 #Download third party software
@@ -356,9 +351,9 @@ createIRODSResources
 installGradleGrails
 installContentBroker
 linkPythonToCI
+chown -R irods:developer /ci/DNSCore
+chown -R irods:developer /ci/storage
 chmod -R g+w /ci
 #Report
 checkStateOfInstalledPackages
-#cd /ci/DNSCore
-#iusrcmd "mvn install -Pci"
 
