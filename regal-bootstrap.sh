@@ -93,15 +93,15 @@ function postProcess(){
 }
 
 function installRegalModule(){
-    VERSION=$1
-    APPNAME=$2
+    version=$1
+    appname=$2
     $ARCHIVE_HOME/activator/activator clean
     yes r|$ARCHIVE_HOME/activator/activator dist
     $ARCHIVE_HOME/activator/activator eclipse
-    cp target/universal/$VERSION.zip  /tmp
+    cp target/universal/$version.zip  /tmp
     cd /tmp
-    unzip $VERSION.zip
-    mv $VERSION  $ARCHIVE_HOME/apps/$APPNAME
+    unzip $version.zip
+    mv $version  $ARCHIVE_HOME/apps/$appname
 }
 
 function installRegalModules(){
