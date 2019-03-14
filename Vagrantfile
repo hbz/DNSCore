@@ -38,7 +38,7 @@ Vagrant.configure("2") do |config|
   config.vm.provider "virtualbox" do |v|
      v.memory = 4096
      v.cpus = 3
-	 v.name = "dns-ci-vm"	 
+	 v.name = "dns-regal-ci-vm"	 
   end
   
   #config.vm.provision :shell, path: "installDNS.sh"
