@@ -326,34 +326,37 @@ function setUmask(){
 	printf "umask 002\n" >> /etc/profile
 }
 
-#Preparations
-checkSystemPrerequisites
-setLocales
-shutdownFirewall
-#Create users and install directory
-setUpUsers
-setUmask
-createStorageAreas
-prepareIRODSDirectoryLayout
-#Download third party software
-downloadBinaries
-#Install
-installPackages
-installEPEL
-installDNS
-configureClamAV
-configureTomcat
-configurePostgres
-createPostgresDBs     
-installIRODS
-configureIRODS
-createIRODSResources
-installGradleGrails
-installContentBroker
-linkPythonToCI
-chown -R irods:developer /ci/DNSCore
-chown -R irods:developer /ci/storage
-chmod -R g+w /ci
-#Report
-checkStateOfInstalledPackages
+function main(){
+	#Preparations
+	checkSystemPrerequisites
+	setLocales
+	shutdownFirewall
+	#Create users and install directory
+	setUpUsers
+	setUmask
+	createStorageAreas
+	prepareIRODSDirectoryLayout
+	#Download third party software
+	downloadBinaries
+	#Install
+	installPackages
+	installEPEL
+	installDNS
+	configureClamAV
+	configureTomcat
+	configurePostgres
+	createPostgresDBs     
+	installIRODS
+	configureIRODS
+	createIRODSResources
+	installGradleGrails
+	installContentBroker
+	linkPythonToCI
+	chown -R irods:developer /ci/DNSCore
+	chown -R irods:developer /ci/storage
+	chmod -R g+w /ci
+	#Report
+	checkStateOfInstalledPackages
+}
 
+main
