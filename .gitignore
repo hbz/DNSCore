@@ -16,3 +16,5 @@ nohup.out
 /bin
 /logs
 derby.log
+ContentBroker/src/main/bash/vagrant/bin
+ContentBroker/src/main/bash/vagrant/logs
