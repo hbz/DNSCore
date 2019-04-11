@@ -1,0 +1,22 @@
+# Systemd unit file for starting and stopping irods Service
+[Unit]
+Description=DNS irods starting-stopping service
+After=network.target
+Requires=network.target postgresql-9.3.service
+[Service]
+#Type=simple
+Type=oneshot
+#Type=forking
+#TimeoutStartSec=120s
+#TimeoutStopSec=180s
+TimeoutStartSec=300s
+TimeoutStopSec=300s
+RemainAfterExit=yes
+User=irods
+Group=irods
+#PIDFile=
+ExecStart=/var/lib/irods/iRODS/irodsctl start
+ExecStop=/var/lib/irods/iRODS/irodsctl stop
+ExecRestart=cd /var/lib/irods/iRODS/irodsctl restart
+[Install]
+WantedBy=multi-user.target

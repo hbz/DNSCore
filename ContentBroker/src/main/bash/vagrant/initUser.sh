@@ -1,7 +1,4 @@
 #!/bin/bash
-## LVR-InfoKom 2019
-
-# LVR-Infokom 2019
 
 if [ "$#" -ne "1" ] ; then
   echo "Require <USER> as argument"
@@ -42,7 +39,7 @@ if [ $(cat /etc/passwd | grep "$DEV_NAME" | wc -l ) == "0" ] ; then
 	rm -rf /tmp/forkDir
 	rm -rf /tmp/aip/
 	rm -rf /tmp/folder1
-	rm -rf /tmp/abc*
+	rm -rf /tmp/abc
 	
 	su - $DEV_NAME -c "printf 'cihost\n1247\nrods\nci\nsdor78-bvc\n' | iinit"
 fi

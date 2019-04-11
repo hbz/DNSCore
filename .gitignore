@@ -18,3 +18,21 @@ deliverable.tar
 *.classpath
 *.DS_Store
 
+# Vagrant stuff
+ContentBroker/src/main/bash/vagrant/acceptance_config.yml
+ContentBroker/src/main/bash/vagrant/boxes/*
+ContentBroker/src/main/bash/vagrant/.vagrant
+ContentBroker/src/main/bash/vagrant/website/.vagrant
+ContentBroker/src/main/bash/vagrant/website/build
+ContentBroker/src/main/bash/vagrant/vagrant-spec.config.rb
+ContentBroker/src/main/bash/vagrant/test/vagrant-spec/.vagrant/
+ContentBroker/src/main/bash/vagrant/elasticsearch-1.1.0.noarch.rpm
+ContentBroker/src/main/bash/vagrant/fcrepo-installer-3.7.1.jar
+ContentBroker/src/main/bash/vagrant/mysql-community-release-el7-5.noarch.rpm
+ContentBroker/src/main/bash/vagrant/typesafe-activator-1.3.5.zip
+ContentBroker/src/main/bash/vagrant/nohup.out
+ContentBroker/src/main/bash/vagrant//logs
+ContentBroker/src/main/bash/vagrant/derby.log
+ContentBroker/src/main/bash/vagrant/bin
+ContentBroker/src/main/bash/vagrant/logs
+
