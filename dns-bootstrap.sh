@@ -3,6 +3,7 @@
 source /vagrant/variables.conf
 
 function installPackages(){
+        sudo cp /vagrant/pgdg-93-centos.repo /etc/yum.repos.d/
 	sudo yum -y update
 	sudo yum -y groupinstall "X Window System"
 	sudo yum -y groupinstall "GNOME Desktop" 
@@ -125,6 +126,7 @@ function installEPEL(){
 		yum -y localinstall $BIN/epel-release-latest-7.noarch.rpm
 		rpm --import $BIN/RPM-GPG-KEY-EPEL-7
 	fi
+	sudo yum -y update
 }
 
 function installDNS(){	
@@ -178,7 +180,7 @@ function configureTomcat(){
 }
 
 function configurePostgres(){
-	mv /var/lib/pgsql/9.3/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.confBU
+	mv /var/lib/pgsql/9.3/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.conf.bck
 	cp -f /vagrant/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.conf
 	sed -i "s/#listen_addresses/listen_addresses = '*'\n#listen_addresses/g" /var/lib/pgsql/9.3/data/postgresql.conf 
 	sed -i 's/max_connections = 100/max_connections = 200/g' /var/lib/pgsql/9.3/data/postgresql.conf   # TODO: wird nichts ersetzt
@@ -198,8 +200,7 @@ function createPostgresDBs(){
 	su - postgres -c "/usr/pgsql-9.3/bin/dropdb ICAT"
 	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods CB"
 	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods ICAT"
-	echo "alter role irods with password '"$ICATPASS"';" >> ~postgres/alter-irods-user.sql
-	echo "alter role irods with password '"$RODSPASS"';" >> ~postgres/alter-irods-user.sql	
+	echo "alter role irods with password '"$RODSPASS"';" > ~postgres/alter-irods-user.sql	
 	cp /vagrant/client-encoding-utf8.sql ~postgres
 	cp /vagrant/createDB.sql ~postgres
 	su - postgres -c "/usr/bin/psql -f ~postgres/alter-irods-user.sql"
@@ -234,10 +235,10 @@ function installIRODS(){
 	systemctl stop postgresql-9.3
 	systemctl start postgresql-9.3
 	systemctl stop irods 
+	ln -sfn /var/lib/irods /ci/irods
 }
 function configureIRODS(){
 	sed -i "s/SHA256/MD5/g" /etc/irods/server_config.json
-
 	if [ -f /etc/init.d/irods ]; then
 	    chkconfig irods off
 	    service irods stop
@@ -246,12 +247,10 @@ function configureIRODS(){
 	cp /vagrant/irodsC7 /etc/systemd/system/irods.service
 	systemctl enable irods
 	systemctl start irods
-	
 	echo "Zone $ZONES"
-	
 	echo "Zonenkey $ZONEKEY"
 	echo "Default-Dir $CACHEDIR"
-	printf "irods\nirods\n$ZONENAME\n1247\n\n\n$CACHEDIR\ndns$ZONES\n$ZONEKEY\n1248\ndnszone-dnszone-dnszone-dnszone-\noff\nrods\n$RODSPASS\nyes\nlocalhost\n\n\n\n$ICATPASS\nyes\n" | /var/lib/irods/packaging/setup_irods.sh
+	printf "irods\nirods\n$ZONENAME\n1247\n\n\n$CACHEDIR\n$ZONEKEY\ndnszone-dnszone-dnszone-dnszone-\n1248\ndnszone-dnszone-dnszone-dnszone-\noff\nrods\n$RODSPASS\nyes\nlocalhost\n\n\n\n$RODSPASS\nyes\n" | /var/lib/irods/packaging/setup_irods.sh
 	sleep 3
         printf "IRODS_SERVICE_ACCOUNT_NAME=irods\nIRODS_SERVICE_GROUP_NAME=irods\n" > /etc/irods/service_account.config
 	systemctl start irods 
@@ -267,7 +266,36 @@ function configureIRODS(){
 	sed -i "s/demoResc/$CACHERESC/g" /etc/irods/core.re
 	service irods start	
 }
+function reConfigureIRODS(){
+	sed -i "s/SHA256/MD5/g" /etc/irods/server_config.json
 
+	if [ -f /etc/init.d/irods ]; then
+	    chkconfig irods off
+	    service irods stop
+	    rm -f /etc/init.d/irods
+	fi
+	cp /vagrant/irodsC7 /etc/systemd/system/irods.service
+	systemctl enable irods
+	systemctl start irods
+	echo "Zone $ZONES"
+	echo "Zonenkey $ZONEKEY"
+	echo "Default-Dir $CACHEDIR"
+	printf "$ZONENAME\n1247\n\n\n$CACHEDIR\n$ZONEKEY\ndnszone-dnszone-dnszone-dnszone-\n1248\ndnszone-dnszone-dnszone-dnszone-\noff\nrods\n$RODSPASS\nyes\nlocalhost\n\n\n\n$RODSPASS\nyes\n" | /var/lib/irods/packaging/setup_irods.sh
+	sleep 3
+        printf "IRODS_SERVICE_ACCOUNT_NAME=irods\nIRODS_SERVICE_GROUP_NAME=irods\n" > /etc/irods/service_account.config
+	systemctl start irods 
+	sleep 1
+	sed -i 's!\"default_dir_mode\": \"0750\"!\"default_dir_mode\": \"0775\"!g' /etc/irods/server_config.json
+	sed -i 's!\"default_file_mode\": \"0600\"!\"default_file_mode\": \"0664\"!g' /etc/irods/server_config.json
+	su - irods -c  "printf 'y\n' | /usr/bin/iadmin modresc demoResc name $CACHERESC"
+	systemctl stop irods
+	sleep 1
+	sed -i 's/SHA256/MD5/g' ~irods/.irods/irods_environment.json
+	sed -i "s/demoResc/$CACHERESC/g" /etc/irods/server_config.json
+	sed -i "s/demoResc/$CACHERESC/g" ~irods/.irods/irods_environment.json
+	sed -i "s/demoResc/$CACHERESC/g" /etc/irods/core.re
+	service irods start	
+}
 function createIRODSResources(){
 	su - irods -c  "printf 'y\n' | /usr/bin/iadmin mkresc $ARCHRESC unixfilesystem $OWNHOST:$LZAPATH"
 	su - irods -c  "printf 'y\n' | /usr/bin/iadmin mkresc $LZARESCG passthru"
@@ -339,8 +367,8 @@ function main(){
 	#Download third party software
 	downloadBinaries
 	#Install
+        installEPEL
 	installPackages
-	installEPEL
 	installDNS
 	configureClamAV
 	configureTomcat
@@ -358,5 +386,13 @@ function main(){
 	#Report
 	checkStateOfInstalledPackages
 }
-
+#configurePostgres
+#createPostgresDBs     
+#installIRODS
+#reConfigureIRODS
 main
+#installIRODS
+#configureIRODS
+#createPostgresDBs
+#installEPEL
+#installPackages
