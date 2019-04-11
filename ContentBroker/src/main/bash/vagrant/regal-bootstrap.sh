@@ -58,7 +58,7 @@ function createRegalFolderLayout(){
 function downloadRegalSources(){
     cd $ARCHIVE_HOME/src
     git clone https://github.com/edoweb/regal-api 
-    cp /vagrant/application.conf $ARCHIVE_HOME/src/regal-api/conf/application.conf
+    cp $CONF/application.conf $ARCHIVE_HOME/src/regal-api/conf/application.conf
     git clone https://github.com/edoweb/regal-install
     git clone https://github.com/hbz/thumby
     git clone https://github.com/hbz/etikett
@@ -67,7 +67,7 @@ function downloadRegalSources(){
 }
 
 function installFedora(){
-    /vagrant/configure.sh
+    $SCRIPT/configure.sh
     export FEDORA_HOME=$ARCHIVE_HOME/fedora
     java -jar $BIN/fcrepo-installer-3.7.1.jar  $ARCHIVE_HOME/conf/install.properties
     cp $ARCHIVE_HOME/conf/fedora-users.xml $ARCHIVE_HOME/fedora/server/config/
@@ -130,7 +130,7 @@ function configureApache(){
     sed -i "1 s|$| api.localhost|" /etc/hosts
     mkdir /etc/httpd/sites-enabled
     echo "IncludeOptional sites-enabled/*.conf" >> /etc/httpd/conf/httpd.conf
-    cp /vagrant/regal.vagrant.conf /etc/httpd/sites-enabled/
+    cp $CONF/regal.vagrant.conf /etc/httpd/sites-enabled/
 }
 
 downloadBinaries

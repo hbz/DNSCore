@@ -174,14 +174,14 @@ function configureClamAV(){
 
 function configureTomcat(){
 	mkdir /usr/share/tomcat/.grails/
-	cp /vagrant/daweb3_properties.groovy /usr/share/tomcat/.grails/daweb3_properties.groovy
+	cp $CONF/daweb3_properties.groovy /usr/share/tomcat/.grails/daweb3_properties.groovy
 	chmod 644 /usr/share/tomcat/.grails/daweb3_properties.groovy
 	chown tomcat:tomcat -R /usr/share/tomcat/.grails
 }
 
 function configurePostgres(){
 	mv /var/lib/pgsql/9.3/data/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.conf.bck
-	cp -f /vagrant/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.conf
+	cp -f $CONF/pg_hba.conf /var/lib/pgsql/9.3/data/pg_hba.conf
 	sed -i "s/#listen_addresses/listen_addresses = '*'\n#listen_addresses/g" /var/lib/pgsql/9.3/data/postgresql.conf 
 	sed -i 's/max_connections = 100/max_connections = 200/g' /var/lib/pgsql/9.3/data/postgresql.conf   # TODO: wird nichts ersetzt
 	systemctl enable postgresql-9.3
@@ -201,8 +201,8 @@ function createPostgresDBs(){
 	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods CB"
 	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods ICAT"
 	echo "alter role irods with password '"$RODSPASS"';" > ~postgres/alter-irods-user.sql	
-	cp /vagrant/client-encoding-utf8.sql ~postgres
-	cp /vagrant/createDB.sql ~postgres
+	cp $CONF/client-encoding-utf8.sql ~postgres
+	cp $CONF/createDB.sql ~postgres
 	su - postgres -c "/usr/bin/psql -f ~postgres/alter-irods-user.sql"
 	su - postgres -c "/usr/bin/psql -f ~postgres/client-encoding-utf8.sql"
 	su - postgres -c "/usr/bin/psql -f ~postgres/createDB.sql"
@@ -244,7 +244,7 @@ function configureIRODS(){
 	    service irods stop
 	    rm -f /etc/init.d/irods
 	fi
-	cp /vagrant/irodsC7 /etc/systemd/system/irods.service
+	cp $CONF/irodsC7 /etc/systemd/system/irods.service
 	systemctl enable irods
 	systemctl start irods
 	echo "Zone $ZONES"
@@ -274,7 +274,7 @@ function reConfigureIRODS(){
 	    service irods stop
 	    rm -f /etc/init.d/irods
 	fi
-	cp /vagrant/irodsC7 /etc/systemd/system/irods.service
+	cp $CONF/irodsC7 /etc/systemd/system/irods.service
 	systemctl enable irods
 	systemctl start irods
 	echo "Zone $ZONES"
@@ -307,9 +307,9 @@ function installGradleGrails(){
 	mkdir -p /ci/projects; 
 	cd /ci/projects
 	mkdir -p ~irods/.m2
-	cp /vagrant/MavenSettings.xml  ~irods/.m2/settings.xml
+	cp $CONF/MavenSettings.xml  ~irods/.m2/settings.xml
 	mkdir -p ~/.m2
-	cp /vagrant/MavenSettings.xml  ~/.m2/settings.xml
+	cp $CONF/MavenSettings.xml  ~/.m2/settings.xml
 	chown -R irods:irods ~irods/.m2
 	cp $BIN/grails-3.2.11.tgz /ci/projects/grails-3.2.11.tgz
 	cd /ci/projects/; 
