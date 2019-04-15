@@ -136,7 +136,6 @@ function installDNS(){
 	rpm --import $BIN/RPM-GPG-KEY-nux
 	rm -f dns-7-repo.tgz
 	yum update
-
 }
 
 function setUpUsers(){
@@ -356,6 +355,13 @@ function setUmask(){
 
 function main(){
 	#Preparations
+	if [ -f /vagrant/bin ]
+	then
+		echo "/vagrant/bin already exists!"	
+	else
+		mkdir /vagrant/bin
+		echo "Start with empty /vagrant/bin. This will probably not work!"
+	fi	
 	checkSystemPrerequisites
 	setLocales
 	shutdownFirewall
@@ -366,10 +372,10 @@ function main(){
 	prepareIRODSDirectoryLayout
 	#Download third party software
 	downloadBinaries
-	#Install
+	#Install	
+	installDNS
         installEPEL
 	installPackages
-	installDNS
 	configureClamAV
 	configureTomcat
 	configurePostgres
