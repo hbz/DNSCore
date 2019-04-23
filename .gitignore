@@ -17,7 +17,7 @@ deliverable.tar
 *.project
 *.classpath
 *.DS_Store
-
+*~
 # Vagrant stuff
 ContentBroker/src/main/bash/vagrant/acceptance_config.yml
 ContentBroker/src/main/bash/vagrant/boxes/*
