@@ -133,6 +133,19 @@ function configureApache(){
     cp $CONF/regal.vagrant.conf /etc/httpd/sites-enabled/
 }
 
+function startRegal(){
+   /vagrant/scripts/start-regal.sh
+}
+
+function createFirstRegalObject(){
+	curl -uadmin:admin -XPOST -F"data=@/opt/regal/src/regal-api/conf/labels.json" -F"format-cb=Json" http://api.localhost/tools/etikett -i -L
+	curl -uedoweb-admin:admin -XPOST http://api.localhost/context.json
+	curl -i -uedoweb-admin:admin -XPUT http://api.localhost/resource/danrw:1234 -d'{"contentType":"monograph","accessScheme":"public"}' -H'content-type:application/json'
+	curl -i -uedoweb-admin:admin -XPUT http://api.localhost/resource/danrw:1235 -d'{"parentPid":"danrw:1234","contentType":"file","accessScheme":"public"}' -H'content-type:application/json'
+	curl -uedoweb-admin:admin -F"data=@/opt/regal/src/regal-api/test/resources/test.pdf;type=application/pdf" -XPUT http://api.localhost/resource/danrw:1235/data
+	curl -uedoweb-admin:admin -XPOST "http://api.localhost/utils/lobidify/danrw:1234?alephid=HT018920238"
+}
+
 downloadBinaries
 installPackages
 createRegalFolderLayout
@@ -144,3 +157,5 @@ installRegalModules
 configureRegalModules
 configureApache
 sudo chown -R vagrant $ARCHIVE_HOME
+startRegal
+createFirstRegalObject
