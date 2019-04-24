@@ -158,4 +158,5 @@ configureRegalModules
 configureApache
 sudo chown -R vagrant $ARCHIVE_HOME
 startRegal
+sleep 20
 createFirstRegalObject

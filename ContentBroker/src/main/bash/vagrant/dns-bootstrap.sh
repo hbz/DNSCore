@@ -51,6 +51,15 @@ function installPackages(){
 	sudo yum -y install authd
 }
 
+function installXFC(){
+	yum install epel-release -y
+	yum groupinstall "Server with GUI" -y
+	yum groupinstall "Xfce" -y
+	echo "xfce4-session" > /home/irods/.Xclients
+	chown irods:irods /home/irods/.Xclients
+	chmod a+x /home/irods/.Xclients
+}
+
 function download(){
 	cd $BIN
 	filename=$1
@@ -199,7 +208,10 @@ function createPostgresDBs(){
 	su - postgres -c "/usr/pgsql-9.3/bin/dropdb ICAT"
 	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods CB"
 	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods ICAT"
-	echo "alter role irods with password '"$RODSPASS"';" > ~postgres/alter-irods-user.sql	
+	echo "alter role irods with password '"$FEDPASS"';" > ~postgres/alter-irods-user.sql
+	echo "alter role irods with password '"$ICATPASS"';" > ~postgres/alter-irods-user.sql
+	echo "alter role irods with password '"$RODSPASS"';" > ~postgres/alter-irods-user.sql
+		
 	cp $CONF/client-encoding-utf8.sql ~postgres
 	cp $CONF/createDB.sql ~postgres
 	su - postgres -c "/usr/bin/psql -f ~postgres/alter-irods-user.sql"
@@ -355,12 +367,12 @@ function setUmask(){
 
 function main(){
 	#Preparations
-	if [ -f /vagrant/bin ]
+	if [ -f $BIN ]
 	then
-		echo "/vagrant/bin already exists!"	
+		echo "$BIN already exists!"	
 	else
-		mkdir /vagrant/bin
-		echo "Start with empty /vagrant/bin. This will probably not work!"
+		mkdir $BIN
+		echo "Start with empty $BIN. This will probably not work!"
 	fi	
 	checkSystemPrerequisites
 	setLocales
@@ -369,7 +381,7 @@ function main(){
 	setUpUsers
 	setUmask
 	createStorageAreas
-	prepareIRODSDirectoryLayout
+	prepareIRODSDirectoryLayout"/usr/bin/psql -f ~postgres/alter-irods-user.sql"
 	#Download third party software
 	downloadBinaries
 	#Install	
@@ -397,6 +409,7 @@ function main(){
 #installIRODS
 #reConfigureIRODS
 main
+#installXFC
 #installIRODS
 #configureIRODS
 #createPostgresDBs
