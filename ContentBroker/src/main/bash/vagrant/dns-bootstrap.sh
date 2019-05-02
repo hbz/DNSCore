@@ -208,6 +208,8 @@ function createPostgresDBs(){
 	su - postgres -c "/usr/pgsql-9.3/bin/dropdb ICAT"
 	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods CB"
 	su - postgres -c "/usr/pgsql-9.3/bin/createdb -E UTF-8 -O irods ICAT"
+	# Nach Aussage des ursprünglichen Autors, sorgen folgenden drei Zeilen dafür, 
+	# dass alle drei passworte gehen.
 	echo "alter role irods with password '"$FEDPASS"';" > ~postgres/alter-irods-user.sql
 	echo "alter role irods with password '"$ICATPASS"';" > ~postgres/alter-irods-user.sql
 	echo "alter role irods with password '"$RODSPASS"';" > ~postgres/alter-irods-user.sql
